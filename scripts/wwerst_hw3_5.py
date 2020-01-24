@@ -60,7 +60,7 @@ class GimbalManager(object):
             self._cmd_pos = np.array([yaw, pitch])
 
     def _set_angles_cb(self, msg):
-        self.set_angles(msg.latitude, msg.longitude)
+        self.set_angles(msg.longitude, msg.latitude)
 
     def _send_joints(self, _):
         command_msg = JointState()

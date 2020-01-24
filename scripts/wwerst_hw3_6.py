@@ -44,12 +44,12 @@ class CameraManager(object):
                 self._last_long = msg.position[i]
 
     def _get_face_cb(self, msg):
-        RADIANS_PER_PIXEL = 1.5/640
+        RADIANS_PER_PIXEL = 1.0/640
         if not msg.faces:
             return
         face = msg.faces[0].face
-        latitude = self._last_lat - (face.x-320.0) * RADIANS_PER_PIXEL
-        longitude = self._last_long - (face.y-240.0) * RADIANS_PER_PIXEL
+        latitude = self._last_lat - (face.y-240.0) * RADIANS_PER_PIXEL
+        longitude = self._last_long - (face.x-320.0) * RADIANS_PER_PIXEL
         self._angle_pub.publish(GimbalPosition(latitude, longitude))
 
     def _send_joints(self, _):
