@@ -1,0 +1,9 @@
+roscore
+rosrun hebiros hebiros_node
+rosrun ee134 pydefinerobot.py
+rosrun ee134 wwerst_hw3_5.py
+v4l2-ctl --list-devices
+rosparam set cv_camera/device_id 2
+rosrun cv_camera cv_camera_node
+rosrun opencv_apps face_detection __name:=detector image:=/cv_camera/image_raw
+rosrun ee134 wwerst_hw3_6.py
