@@ -45,7 +45,7 @@ class CameraManager(object):
                 self._last_lat = msg.position[i]
 
     def _get_striker_cb(self, msg):
-        RADIANS_PER_PIXEL = 1.0/640
+        RADIANS_PER_PIXEL = 0.8/640
         latitude = self._last_lat - (msg.point.y-240.0) * RADIANS_PER_PIXEL
         longitude = self._last_long - (msg.point.x-320.0) * RADIANS_PER_PIXEL
         self._angle_pub.publish(GimbalPosition(latitude, longitude))

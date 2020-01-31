@@ -50,9 +50,10 @@ class GimbalManager(object):
             '/gimbal_goal',
             GimbalPosition,
             self._set_angles_cb)
-        self._dt = 0.01
+        rate = 0.01
+        self._last_time = rospy.Time.now().to_sec()
         self._timer = rospy.Timer(
-            rospy.Duration(self._dt),
+            rospy.Duration(rate),
             self._send_joints)
 
     def set_angles(self, yaw, pitch):
@@ -63,21 +64,23 @@ class GimbalManager(object):
         self.set_angles(msg.longitude, msg.latitude)
 
     def _send_joints(self, _):
+        dt = rospy.Time.now().to_sec() - self._last_time
+        self._last_time += dt
         command_msg = JointState()
         command_msg.name = [self._yaw_axis_name, self._pitch_axis_name]
-        time_constant = 0.2      # Convergence time constant
+        time_constant = 0.1      # Convergence time constant
         lam = 1.0/time_constant   # Convergence rate
-        damping = 2.0
-        max_acc = 2.0
+        damping = 1.5
+        max_acc = 1500.0
         max_velocity = 3.0              # Velocity magnitude limit
         with self._lock:
             self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self._cmd_pos)
             self._cur_acc = limit_array(self._cur_acc, max_acc)
-            self._cur_vel += self._dt * self._cur_acc
+            self._cur_vel += dt * self._cur_acc
             # Apply velocity limits
             self._cur_vel = limit_array(self._cur_vel, max_velocity)
 
-            self._cur_pos += self._dt * self._cur_vel
+            self._cur_pos += dt * self._cur_vel
             command_msg.position = self._cur_pos
             command_msg.velocity = self._cur_vel
             command_msg.effort = np.array([0.0]*len(self._cur_pos))

@@ -1,6 +1,10 @@
 <launch>
   <node name="hebiros_node" pkg="hebiros" type="hebiros_node" respawn="false" output="screen"/>
   <node name="cv_camera" pkg="cv_camera" type="cv_camera_node" respawn="false" output="screen">
-  	<param name="cv_camera/device_id" value="2"/>
+  	<param name="device_id" value="0"/>
   </node>
+  <node name="pydetectobject" pkg="ee134" type="pydetectobject.py" respawn="false" output="screen"/>
+  <node name="pydefinerobot" pkg="ee134" type="pydefinerobot.py" respawn="false" output="screen"/>
+  <node name="hw3_5" pkg="ee134" type="wwerst_hw3_5.py" respawn="false" output="screen"/>
+  <node name="hw3_6" pkg="ee134" type="wwerst_hw3_6.py" respawn="false" output="screen"/>
 </launch>
