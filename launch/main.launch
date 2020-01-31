@@ -1,3 +1,6 @@
 <launch>
   <node name="hebiros_node" pkg="hebiros" type="hebiros_node" respawn="false" output="screen"/>
+  <node name="cv_camera" pkg="cv_camera" type="cv_camera_node" respawn="false" output="screen">
+  	<param name="cv_camera/device_id" value="2"/>
+  </node>
 </launch>

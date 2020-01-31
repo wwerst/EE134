@@ -28,7 +28,7 @@ class Detector:
         import rospkg
         import os
         import errno
-        XMLfile = rospkg.RosPack().get_path('hw4code') + 'striker.xml'
+        XMLfile = rospkg.RosPack().get_path('ee134') + '/scripts/striker.xml'
         if not os.path.isfile(XMLfile):
             raise IOError(errno.ENOENT, os.strerror(errno.ENOENT), XMLfile)
 
@@ -48,7 +48,7 @@ class Detector:
         # Subscribe to the source topic.  Using a queue size of one
         # means only the most recent message is stored for the next
         # subscriber callback.
-        rospy.Subscriber(source_topic,
+        rospy.Subscriber('/cv_camera/image_raw',
                          sensor_msgs.msg.Image,
                          self.process,
                          queue_size=1)
@@ -58,7 +58,7 @@ class Detector:
                                          sensor_msgs.msg.Image,
                                          queue_size=1)
 
-        self.point_publusher = rospy.Publisher(point_output_topic,
+        self.point_publisher = rospy.Publisher(point_output_topic,
                                                 PointStamped,
                                                 queue_size=1)
 
@@ -83,19 +83,18 @@ class Detector:
                                                  flags=cv2.CASCADE_SCALE_IMAGE)
 
         # For the fun of it.  This should also be published!
-        print objects
 
         # Indicate the objects in the image.
-        for (x,y,w,h) in objects:
-            cv2.rectangle(cvImage,(x,y),(x+w,y+h),(255,0,0),2)
+        for (x, y, w, h) in objects:
+            cv2.rectangle(cvImage, (x, y), (x+w, y+h), (255, 0, 0), 2)
 
         # Calculate the position of the object
         point = PointStamped()
-        if objects: # Check for null
+        if len(objects):  # Check for null
             # find the center of the object
             point.point.x = objects[0][0] + (objects[0][2]/2.0)
             point.point.y = objects[0][1] + (objects[0][3]/2.0)
-
+            print objects
             # Publish the point object
             self.point_publisher.publish(point)
         # Else, do not publish

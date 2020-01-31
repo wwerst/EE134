@@ -7,7 +7,7 @@ import numpy as np
 import rospy
 from ee134.msg import GimbalPosition
 from sensor_msgs.msg import JointState
-from geometry_msgs_msg import PointStamped
+from geometry_msgs.msg import PointStamped
 from opencv_apps.msg import FaceArrayStamped
 
 
@@ -32,10 +32,6 @@ class CameraManager(object):
             '/hebiros/robot/feedback/joint_state',
             JointState,
             self._get_pos_cb)
-        #self._face_sub = rospy.Subscriber(
-        #    '/detector/faces',
-        #    FaceArrayStamped,
-        #    self._get_face_cb)
         self._striker_sub = rospy.Subscriber(
             '/detector/strikers',
             PointStamped,
@@ -47,19 +43,6 @@ class CameraManager(object):
                 self._last_long = msg.position[i]
             if 'Pitch' in name:
                 self._last_lat = msg.position[i]
-
-    def _get_face_cb(self, msg):
-        RADIANS_PER_PIXEL = 1.0/640
-        first_eye = None
-        for f in msg.faces:
-            for e in f.eyes:
-                first_eye = e
-                break
-        if not first_eye:
-            return
-        latitude = self._last_lat - (first_eye.y-240.0) * RADIANS_PER_PIXEL
-        longitude = self._last_long - (first_eye.x-320.0) * RADIANS_PER_PIXEL
-        self._angle_pub.publish(GimbalPosition(latitude, longitude))
 
     def _get_striker_cb(self, msg):
         RADIANS_PER_PIXEL = 1.0/640
