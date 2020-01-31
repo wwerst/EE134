@@ -78,7 +78,7 @@ class Detector:
         # Run the detector.
         objects = self.detector.detectMultiScale(gray,
                                                  scaleFactor=1.3,
-                                                 minNeighbors=4,
+                                                 minNeighbors=12,
                                                  minSize=(30,30),
                                                  flags=cv2.CASCADE_SCALE_IMAGE)
 
