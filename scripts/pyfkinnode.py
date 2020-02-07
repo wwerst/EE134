@@ -40,9 +40,7 @@ class FKin:
         jointnames[] = [name of q0, name of q1, ...]
         Joints are labeled qn starting from n=0 at the base outward toward the tip
         '''
-        self.jointnames = jointnames.copy()
-        self.indicesKnown = False
-        self.indices = {}
+        self.jointnames = jointnames[:]
 
         # Constants for robot size
         self.W = 0.5 # Table width, meters
@@ -56,18 +54,16 @@ class FKin:
 
 
         # Create a subscriber to listen to joint_states.
-        rospy.Subscriber("joint_states", JointState, self.process)
+        rospy.Subscriber("/hebiros/robot/feedback/joint_state", JointState, self.process)
 
     def process(self, msg):
-        if not self.indicesKnown:
-            for name in msg.name:
-                if name in self.jointnames:
-                    self.indices[name] = msg.name.index(name)
-            if len(self.indices) < len(self.jointnames):
-                rospy.loginfo("Not all joints found in jointstate message")
-                return
-            else:
-                self.indicesKnown = True
+        indices = {}
+        for name in msg.name:
+            if name in self.jointnames:
+                indices[name] = msg.name.index(name)
+        if len(indices) < len(self.jointnames):
+            rospy.loginfo("Not all joints found in jointstate message")
+            return
 
         # Start before Joint 0.
         x = vec(0, 0, 0)
@@ -76,12 +72,12 @@ class FKin:
         # W --> 0-
         x = x + vec(self.W/2.0, 0, 0)
         # 0- --> 0+
-        R = R * Rz(msg.position[self.indices[self.jointnames[0]]])
+        R = R * Rz(msg.position[indices[self.jointnames[0]]])
 
         # 0+ --> 1-
         x = x + R.apply(vec(self.L_1s, 0, 0))
         # 1- --> 1+
-        R = R * Rz(msg.position[self.indices[self.jointnames[1]]])
+        R = R * Rz(msg.position[indices[self.jointnames[1]]])
 
         # 1+ --> Tip
         x = x + R.apply(vec(0, self.L_2s, 0))
@@ -125,7 +121,7 @@ if __name__ == "__main__":
     rospy.init_node('fkinnode')
 
     # Instantiate the FKin object.
-    fkin = FKin(['q0', 'q1'])
+    fkin = FKin(['Chewbacca/q0', 'Chewbacca/q1'])
 
     # Spin until shutdown.
     rospy.loginfo("Fkin: Running...")
