@@ -35,39 +35,56 @@ def Rz(q):
 #  FKin Node Class
 #
 class FKin:
-    def __init__(self):
+    def __init__(self, jointnames):
+        '''
+        jointnames[] = [name of q0, name of q1, ...]
+        Joints are labeled qn starting from n=0 at the base outward toward the tip
+        '''
+        self.jointnames = jointnames.copy()
+        self.indicesKnown = False
+        self.indices = {}
+
+        # Constants for robot size
+        self.W = 0.5 # Table width, meters
+        self.L_1s = 0.2 # First SCARA arm length, meters
+        self.L_2s = 0.2 # Second SCARA arm length, meters
+
+
         # Create publishers to send the tip position/pose.
         self.pointPublisher = rospy.Publisher("/tippoint", PointStamped)
         self.posePublisher  = rospy.Publisher("/tippose",  PoseStamped)
+
 
         # Create a subscriber to listen to joint_states.
         rospy.Subscriber("joint_states", JointState, self.process)
 
     def process(self, msg):
+        if not self.indicesKnown:
+            for name in msg.name:
+                if name in self.jointnames:
+                    self.indices[name] = msg.name.index(name)
+            if len(self.indices) < len(self.jointnames):
+                rospy.loginfo("Not all joints found in jointstate message")
+                return
+            else:
+                self.indicesKnown = True
+
         # Start before Joint 0.
         x = vec(0, 0, 0)
         R = Rz(0)
 
-        # Rotate Joint 0 about Z axis.
-        R = R * Rz(msg.position[0])
+        # W --> 0-
+        x = x + vec(self.W/2.0, 0, 0)
+        # 0- --> 0+
+        R = R * Rz(msg.position[self.indices[self.jointnames[0]]])
 
-        # Shift to Joint 1.
-        x = x + R.apply(vec(0.0, 0.05, 0.081))
-        R = R * Rx(np.pi/2)
+        # 0+ --> 1-
+        x = x + R.apply(vec(self.L_1s, 0, 0))
+        # 1- --> 1+
+        R = R * Rz(msg.position[self.indices[self.jointnames[1]]])
 
-        # Rotate Joint 1 about Z axis.
-        R = R * Rz(msg.position[1])
-
-        # Shift to Joint 2.
-        x = x + R.apply(vec(0.5, 0.0, 0.036))
-        R = R;
-
-        # Rotate Joint 2 about Z axis.
-        R = R * Rz(msg.position[2])
-
-        # Shift to the tip.
-        x = x + R.apply(vec(0.5, 0.0, 0.0335))
-        R = R * Ry(np.pi/2);
+        # 1+ --> Tip
+        x = x + R.apply(vec(0, self.L_2s, 0))
 
         # Publish the tip point.  Note that we declare the point as
         # given with respect to the world reference frame.
@@ -108,7 +125,7 @@ if __name__ == "__main__":
     rospy.init_node('fkinnode')
 
     # Instantiate the FKin object.
-    fkin = FKin()
+    fkin = FKin(['q0', 'q1'])
 
     # Spin until shutdown.
     rospy.loginfo("Fkin: Running...")
