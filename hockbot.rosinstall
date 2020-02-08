@@ -1,0 +1,9 @@
+- git:
+    local-name: ee134
+    uri: git@github.com:wwerst/EE134.git
+    version: master
+- git:
+    local-name: HEBI-ROS
+    uri: git@github.com:wwerst/HEBI-ROS.git
+    version: master
+
