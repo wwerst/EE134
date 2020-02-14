@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+
+<robot name="5dof">
+  
+  <!-- *************************************************** -->
+  <!-- ******************** Kinematics ******************* -->
+  <!-- *************************************************** -->
+  <!-- Note the 'origin' tag in the fixed joints defines the shift and
+       reorientation before the continuous joint rotates around the
+       axis.  For shift distances see below. -->
+
+  <link name="world"/>
+
+
+  <link name="q0minus"/>
+  <joint name="connect-world-q0minus" type="fixed">
+    <parent link="world"/>
+    <child  link="q0minus"/>
+    <origin xyz="0.25 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="q0plus"/>
+  <joint name="Chewbacca/q0" type="continuous">
+    <parent link="q0minus"/>
+    <child  link="q0plus"/>
+    <axis   xyz="0 0 1"/>
+  </joint>
+
+
+  <link name="q1minus"/>
+  <joint name="connect-q0plus-q1minus" type="fixed">
+    <parent link="q0plus"/>
+    <child  link="q1minus"/>
+    <origin xyz="0 0 0.1" rpy="0 -1.5707963267949 0"/>
+  </joint>
+
+  <link name="q1plus"/>
+  <joint name="Chewbacca/q1" type="continuous">
+    <parent link="q1minus"/>
+    <child  link="q1plus"/>
+    <axis   xyz="0 0 1"/>
+  </joint>
+
+
+  <link name="q2minus"/>
+  <joint name="connect-q1plus-q2minus" type="fixed">
+    <parent link="motor1output"/>
+    <child  link="motor2base"/>
+    <origin xyz="0.4 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="q2plus"/>
+  <joint name="Chewbacca/q2" type="continuous">
+    <parent link="q2minus"/>
+    <child  link="q2plus"/>
+    <axis   xyz="0 0 1"/>
+  </joint> 
+
+
+  <link name="q3minus"/>
+  <joint name="connect-q2plus-q3minus" type="fixed">
+    <parent link="q2plus"/>
+    <child  link="q3minus"/>
+    <origin xyz="0.5 0 0" rpy="-1.5707963267949 0 0"/>
+  </joint>
+
+  <link name="q3plus"/>
+  <joint name="Chewbacca/q3" type="continuous">
+    <parent link="q3minus"/>
+    <child  link="q3plus"/>
+    <axis   xyz="0 0 1"/>
+  </joint> 
+
+
+  <link name="q4minus"/>
+  <joint name="connect-q3plus-q4minus" type="fixed">
+    <parent link="q3plus"/>
+    <child  link="q4minus"/>
+    <origin xyz="0 0 0.5" rpy="1.5707963267949 0 0"/>
+  </joint>
+
+  <link name="q4plus"/>
+  <joint name="Chewbacca/q4" type="continuous">
+    <parent link="q4minus"/>
+    <child  link="q4plus"/>
+    <axis   xyz="0 0 1"/>
+  </joint> 
+
+
+  <joint name="connect-q4plus-tip" type="fixed">
+    <parent link="q4plus"/>
+    <child  link="tip"/>
+    <origin xyz="0 0.2 0" rpy="0 0 0"/>
+  </joint>
+  <link name="tip"/>
+
+
+</robot>
