@@ -16,12 +16,14 @@ r2 = 0.5 # meters, length of the second arm
 #  v
 # theta_1----(r1)------theta_2------(r2)----tip
 
+
 def fkin(theta_1, theta_2):
     '''
     Returns (x, y) position as a function of the joint angles q0, q1
     '''
     return (SCARA_X_OFFSET +r1*np.cos(theta_1) + r2*np.cos(theta_1 + theta_2) , 
             SCARA_Y_OFFSET +r1*np.sin(theta_1) + r2*np.sin(theta_1 + theta_2))
+
 
 def ikin(x, y):
     '''

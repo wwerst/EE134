@@ -12,6 +12,7 @@ from hebiros.msg import (
     TrajectoryActionGoal,
     WaypointMsg,
 )
+from hockbot.scara_kinematics import ikin
 from hockbot.inverse_dynamics import plan_trajectory
 
 
@@ -30,6 +31,10 @@ class ScaraController(object):
             )
 
     def _move_cart_cb(self, req):
+        theta_1, theta_2 = ikin(req.x, req.y)[0]
+        theta_2 = -theta_2
+        traj = plan_trajectory(theta_1, theta_2)
+
 
     def send_hebi_traj(joint_states, dt):
         goal = TrajectoryActionGoal(waypoints=[], times=[])
