@@ -12,6 +12,7 @@ import rospkg
 
 URDF_PATH = rospkg.RosPack().get_path('hockbot') + '/urdf/robot_5dof.urdf'
 robot = URDF.from_xml_file(URDF_PATH)
+joints = robots.joints
 
 #
 #  Matrix Manipulation Utilities
@@ -35,7 +36,18 @@ def fkin(q0, q1, q2, q3, q4, q5):
     phi represents pitch of gripper WRT the horizon (world xy plane)
     '''
     
-    
+    # start before Joint 0
+    x = vec(0,0,0)
+    R = Rz(0)
 
-if __name__ == "__main__":
-    fkin(0, 0, 0, 0, 0, 0)
+    for joint in joints:
+        # check for origin and axis
+        if joint.origin:
+            xyz = joint.origin.xyz
+            rpy = joint.origin.rpy
+            x = np.add(x, xyz)
+            
+        if joint.axis:
+            xyz = joint.axis.xyz
+
+    return [x[0], x[1], x[2], theta, phi, grip]
