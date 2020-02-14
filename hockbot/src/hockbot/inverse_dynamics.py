@@ -70,12 +70,12 @@ def compute_1d_spline(starting_pos, ending_pos):
 
 def calculate_dynamics(pos_vector, vel_vector, accel_vector):
     """Calculate the effort vector for a custom 2-DoF SCARA."""
-    m1 = 1.5  # kg weight of first body
+    m1 = 1.0  # kg weight of first body
     r1 = 0.35  # distance to cg
     d1 = 0.5   # full link length
     i1 = (1./8)*m1*d1**2
 
-    m2 = 1.2
+    m2 = 1.0
     r2 = 0.35
     i2 = (1./8)*m2*0.5**2
 
