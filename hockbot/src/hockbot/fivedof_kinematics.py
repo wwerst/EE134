@@ -32,22 +32,40 @@ def fkin(q0, q1, q2, q3, q4, q5):
     q0-q4 take values in [0, 2Pi)
     q5 takes values 0 or 1 (electromagnet off or on)
 
-    theta represents yaw of the gripper around the world z axis
-    phi represents pitch of gripper WRT the horizon (world xy plane)
+    phi represents yaw of the gripper around the world z axis
+    theta represents pitch of gripper WRT the horizon (world xy plane)
     '''
     
+    joint_thetas = [q0, q1, q2, q3, q4]
+    i = 0
+
     # start before Joint 0
     x = vec(0,0,0)
     R = Rz(0)
 
     for joint in joints:
-        # check for origin and axis
+        # If joint has an origin field, it's just a translation and maybe rotation
         if joint.origin:
             xyz = joint.origin.xyz
             rpy = joint.origin.rpy
-            x = np.add(x, xyz)
+            x = x + R.apply(vec(xyz[0], xyz[1], xyz[2]))
+            R = R * Rx(rpy[0]) * Ry(rpy[1]) * Rz(rpy[2])
             
+        # if joint has an axis field, it's just a rotation about a motor
         if joint.axis:
             xyz = joint.axis.xyz
+            if xyz[0]:
+                R = R * Rx(joint_thetas[i])
+            elif xyz[1]:
+                R = R * Ry(joints_thetas[i])
+            elif xyz[2]:
+                R = R * Rz(joint_thetas[i])
 
-    return [x[0], x[1], x[2], theta, phi, grip]
+            i = i + 1
+
+    # Extract the tip position from the R matrix
+    angles = R.as_euler('xyz')
+    phi = angles[2] # Phi is just the z axis rotation
+    theta = angles[1] # Theta is just the y axis rotation
+
+    return (x[0], x[1], x[2], theta, phi, grip)
