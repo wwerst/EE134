@@ -58,5 +58,14 @@ def ikin(x, y):
     theta_2_2 = -1 * theta_1_2
 
     theta_2_1 = theta_t + (theta_t - theta_1_1)
-   
-    return [(theta_1_1, theta_1_1+theta_1_2), (theta_2_1, theta_2_1+theta_2_2)]   
+
+    return np.array(
+        [[theta_1_1, theta_1_1+theta_1_2],
+         [theta_2_1, theta_2_1+theta_2_2]])
+
+
+def jacobian(thetas):
+    return np.array(
+        [[-r1*np.sin(thetas[0]), -r2*np.sin(thetas[1])],
+         [r1*np.cos(thetas[0]), r2*np.cos(thetas[1])]])
+
