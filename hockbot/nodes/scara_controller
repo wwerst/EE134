@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import (
-    Point,
+from hockbot.srv import (
+    MoveCart,
 )
 from sensor_msgs.msg import JointState
 
 import actionlib
 from hebiros.msg import (
     TrajectoryAction,
-    TrajectoryActionGoal,
+    TrajectoryGoal,
     WaypointMsg,
 )
 from hockbot.scara_kinematics import ikin
@@ -24,20 +24,33 @@ class ScaraController(object):
             JointState,
             queue_size=1)
 
+        self._cur_pos = rospy.wait_for_message(
+            '/hebiros/robot/feedback/joint_state',
+            JointState)
+        self._pos_sub = rospy.Subscriber(
+            '/hebiros/robot/feedback/joint_state',
+            JointState,
+            self._pos_cb)
         self._cart_srv = rospy.Service(
-            '~/cart',
-            Point,
+            '~/move_cart',
+            MoveCart,
             self._move_cart_cb
             )
 
+    def _pos_cb(self, msg):
+        self._cur_pos = msg
+
     def _move_cart_cb(self, req):
+        print(req)
         theta_1, theta_2 = ikin(req.x, req.y)[0]
-        theta_2 = -theta_2
-        traj = plan_trajectory(theta_1, theta_2)
+        goal_state = JointState(
+            name=['Scara/0', 'Scara/1'],
+            position=[theta_1, -theta_2])
+        traj = plan_trajectory(self._cur_pos, goal_state)
+        self._send_hebi_traj(traj, 0.01)
 
-
-    def send_hebi_traj(joint_states, dt):
-        goal = TrajectoryActionGoal(waypoints=[], times=[])
+    def _send_hebi_traj(self, joint_states, dt):
+        goal = TrajectoryGoal(waypoints=[], times=[])
         t = dt
         for j in joint_states:
             waypoint_msg = WaypointMsg(
