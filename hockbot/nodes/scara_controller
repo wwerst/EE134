@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+
+import rospy
+from geometry_msgs.msg import (
+    Point,
+)
+from sensor_msgs.msg import JointState
+
+import actionlib
+from hebiros.msg import (
+    TrajectoryAction,
+    TrajectoryActionGoal,
+    WaypointMsg,
+)
+from hockbot.inverse_dynamics import plan_trajectory
+
+
+class ScaraController(object):
+
+    def __init__(self):
+        self._hebi_commander = rospy.Publisher(
+            '/hebiros/robot/command/joint_state',
+            JointState,
+            queue_size=1)
+
+        self._cart_srv = rospy.Service(
+            '~/cart',
+            Point,
+            self._move_cart_cb
+            )
+
+    def _move_cart_cb(self, req):
+
+    def send_hebi_traj(joint_states, dt):
+        goal = TrajectoryActionGoal(waypoints=[], times=[])
+        t = dt
+        for j in joint_states:
+            waypoint_msg = WaypointMsg(
+                names=j.name,
+                positions=j.position,
+                velocities=j.velocity,
+                accelerations=j.effort)
+            goal.waypoints.append(waypoint_msg)
+            goal.times.append(t)
+            t += dt
+        client = actionlib.SimpleActionClient('/hebiros/robot/trajectory', TrajectoryAction)
+        client.wait_for_server()
+        client.send_goal(goal)
+        client.wait_for_result()
+
+
+def main():
+    rospy.init_node('scara_controller')
+    controller = ScaraController()
+    rospy.spin()
+
+
+if __name__ == '__main__':
+    main()
