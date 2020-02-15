@@ -54,13 +54,10 @@ def fkin(q0, q1, q2, q3, q4, q5):
         # if joint has an axis field, it's just a rotation about a motor
         if joint.axis:
             xyz = joint.axis.xyz
-            if xyz[0]:
-                R = R * Rx(joint_thetas[i])
-            elif xyz[1]:
-                R = R * Ry(joints_thetas[i])
-            elif xyz[2]:
-                R = R * Rz(joint_thetas[i])
-
+            R = R * 
+                Rx(joint_thetas[i] * xyz[0]) * 
+                Ry(joint_thetas[i] * xyz[1]) * 
+                Rz(joint_thetas[i] * xyz[2])
             i = i + 1
 
     # Extract the tip position from the R matrix
