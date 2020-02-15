@@ -92,15 +92,20 @@ class ScaraController(object):
     def plan_cartesian(self, goal_pos, goal_time=1.0, dt=0.01):
         cur_angles = self._cur_pos
         cur_angles = np.array([cur_angles.position[0], cur_angles.position[1]])
-        start_x, start_y = fkin(cur_angles[0], cur_angles[1])
+        start_x, start_y = fkin(cur_angles[0], -cur_angles[1])
         def interp_pos(fraction):
+            print((start_x, start_y))
+            print(goal_pos)
             return np.array(
-                start_x + (start_x - goal_pos[0])*fraction,
-                start_y + (start_y - goal_pos[1])*fraction)
+                [start_x + (goal_pos[0] - start_x)*fraction,
+                 start_y + (goal_pos[1] - start_y)*fraction])
         positions = []
         for frac in np.linspace(0.0, goal_time, goal_time//dt):
             step_pos = interp_pos(frac)
+            print(step_pos)
             solution_angles = ikin(step_pos[0], step_pos[1])
+            print(solution_angles)
+            print(cur_angles)
             angle_delta = np.linalg.norm(
                 solution_angles - cur_angles, axis=1)
             # HACK(WHW):
@@ -109,6 +114,8 @@ class ScaraController(object):
             jstate = JointState()
             jstate.name = ['Scara/0', 'Scara/1']
             jstate.position = cur_angles
+            jstate.velocity = [0, 0]
+            jstate.effort = [0, 0]
             positions.append(jstate)
         return positions
 
