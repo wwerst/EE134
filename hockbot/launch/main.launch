@@ -3,8 +3,10 @@
   <node name="hebiros_node" pkg="hebiros" type="hebiros_node" respawn="false" output="screen"/>
   <node name="pydefinerobot" pkg="ee134" type="pydefinerobot.py" respawn="false" output="screen"/>
   <node name="scara_controller" pkg="hockbot" type="scara_controller" respawn="false" output="screen"/>
-  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
-  	<param name="~ignore_timestamp" value="true"/>
-  	<param name="~joint_states" value="/hebiros/robot/feedback/joint_state"/>
+  <node name="joint_state_publisher" pkg="joint_state_publisher" respawn="false" type="joint_state_publisher">
+    <rosparam param="source_list">["/hebiros/robot/feedback/joint_state"]</rosparam>
+    <param name="use_mimic_tags" value="true"/>
+  </node>
+  <node name="robot_state_publisher" pkg="robot_state_publisher" respawn="false" type="robot_state_publisher">
   </node>
 </launch>

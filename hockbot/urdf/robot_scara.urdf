@@ -24,16 +24,32 @@
     <parent link="motor0base"/>
     <child  link="motor0output"/>
     <axis   xyz="0 0 1"/>
-    <origin xyz="0 0 0" rpy="0 0 0.48918420473207647"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
-  <link name="motor0output"> </link>
+  <link name="motor0output">
+    <visual>
+      <geometry>
+        <box size="0.40 0.08 0.03"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0.25 0 0"/>
+    </visual>
+  </link>
 
 
 
-  <joint name="connect-motor0output-motor1base" type="fixed">
+  <joint name="connect-motor0output-motor1_mimic_base" type="fixed">
     <parent link="motor0output"/>
-    <child  link="motor1base"/>
-    <origin xyz="0.5 0 0" rpy="0 3.1415926535 0"/>
+    <child  link="motor1_mimic_base"/>
+    <origin xyz="0.5 0 0" rpy="3.1415926535 0 0"/>
+  </joint>
+  <link name="motor1_mimic_base"/>
+
+  <joint name="Scara/0_1_Mimic" type="continuous">
+    <parent link="motor1_mimic_base"/>
+    <child link="motor1base"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis   xyz="0 0 1"/>
+    <mimic joint="Scara/0" multiplier="1" offset="0"/>
   </joint>
   <link name="motor1base"/>
 
@@ -42,16 +58,23 @@
     <parent link="motor1base"/>
     <child  link="motor1output"/>
     <axis   xyz="0 0 1"/>
-    <origin xyz="0 0 0" rpy="0 0 0.2562432289123535"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
-  <link name="motor1output"> </link>
+  <link name="motor1output">
+    <visual>
+      <geometry>
+        <box size="0.40 0.08 0.03"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0.25 0 0"/>
+    </visual>
+  </link>
 
 
 
   <joint name="connect-motor1output-tip" type="fixed">
     <parent link="motor1output"/>
     <child  link="tip"/>
-    <origin xyz="0 0.5 0" rpy="0 0 0"/>
+    <origin xyz="0.5 0 0" rpy="0 0 0"/>
   </joint>
   <link name="tip"/>
 
