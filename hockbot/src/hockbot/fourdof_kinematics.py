@@ -80,11 +80,15 @@ def fkin(q0, q1, q2, q3, q4):
 def ikin(x, y, z, surface=SURFACE_PLAY):
     '''
     Returns (q0, q1, q2, q3) as a function of requested cartesian position.
-    If surface = SURFACE_PLAY then (x, y) refers to a position in the playing area relative to
-    the bottom left corner.
-    If surface = SURFACE_COLLECT then x is irrelevant and y represents the (positive) normal 
-    distance between the surface of the playing area and the center of the puck in the goal 
-    collection area.
+
+    If surface = SURFACE_PLAY then (x, y, z) refers to a position in the playing area relative to
+    the bottom left corner. Tip will be pointed directly in the -z direction. +z is the height off
+    the xy plane.
+
+    If surface = SURFACE_COLLECT then x is irrelevant and (y, z) represent the position of the
+    gripper relative to the above origin. -z goes below the xy plane (to get the puck) and -y
+    brings the gripper away from the side of the table. The gripper tip will be pointed directly 
+    at the xz plane.
 
     Returns None if position out of bounds or out of reach
     '''
@@ -97,13 +101,13 @@ def ikin(x, y, z, surface=SURFACE_PLAY):
     # Check out of bounds/reach
     if (surface == SURFACE_PLAY):
         if (x**2 + y**2 + (z + TIP_LENGTH)**2 > (L1+L2)**2): # Cannot reach longer than arms
-            print('reach error')
+            print('Robot cannot reach')
             return None
         elif (y < 0): # Cannot reach behind itself in play mode
-            print('Cant go behind')
+            print('Cant go behind robot')
             return None
-        elif (z < TIP_LENGTH - Z_OFFSET): # Don't crash into the table
-            print('crash')
+        elif (z < -1 * Z_OFFSET): # Don't crash into the table
+            print('Crash into table')
             return None
 
     if (surface == SURFACE_COLLECT):
@@ -133,11 +137,14 @@ def ikin(x, y, z, surface=SURFACE_PLAY):
     return (q0, q1, q2, q3)
 
 
+# Test cases (always keep tip pointed down)
 if __name__ == "__main__":
     theta0 = 3
     theta1 = 1.13
-    theta2 = 0.73
+    theta2 = 0.6
     theta3 = np.pi - theta1 - theta2
     a = fkin(theta0, theta1, theta2, theta3, 0)
     print(a)
-    print(ikin(a[0], a[1], a[2]))
+    b = ikin(a[0], a[1], a[2])
+    print(b)
+    print(fkin(b[0], b[1], b[2], b[3], 0))
