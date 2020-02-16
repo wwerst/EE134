@@ -29,12 +29,9 @@ TIP_LENGTH = np.sqrt(   joints[-1].origin.xyz[0]**2 +
 L1 = joints[4].origin.xyz[0]
 L2 = joints[6].origin.xyz[0]
 
-# World constants
+# Functional constants
 SURFACE_PLAY = 0
 SURFACE_COLLECT = 1
-
-MAX_PLAY_REACH = np.sqrt((L1+ L2)**2 - (np.absolute(Z_OFFSET-TIP_LENGTH))**2)
-MAX_COLLECT_REACH = np.sqrt((L1 + L2)**2 - TIP_LENGTH**2) - Z_OFFSET
 
 #
 #  Matrix Manipulation Utilities
@@ -104,17 +101,21 @@ def ikin(x, y, z, surface):
     # Work from the robot's reference frame
     x = x - X_OFFSET
     y = y - Y_OFFSET
+    z = z - Z_OFFSET
 
     # Check out of bounds/reach
     if (surface == SURFACE_PLAY):
-        if (np.sqrt(x**2 + y**2) > MAX_PLAY_REACH): # Cannot reach longer than arms
+        if (x**2 + y**2 + (z + TIP_LENGTH)**2 > (L1+L2)**2): # Cannot reach longer than arms
             return None
-        elif (y < 0): # Cannot reach behind itself in play mode
+        elif (y <= 0): # Cannot reach behind itself in play mode
             return None
-    if (surface == SURFACE_COLLECT):
-        if (y > MAX_COLLECT_REACH):
+        elif (z < TIP_LENGTH - Z_OFFSET): # Don't crash into the table
             return None
 
+    if (surface == SURFACE_COLLECT):
+            return None
+
+    # Calculate the kinematics
     if (surface == SURFACE_PLAY):
         # Easy to calculate the base angle, as it's just the rotation necessary to hit the point on 
         # the xy plane
@@ -123,9 +124,16 @@ def ikin(x, y, z, surface):
         # Calculate the 3 joints above the base joint
 
         R = np.sqrt(x**2 + y**2) # Distance in the cartesian plane from base to tip touchdown
-        r = np.sqrt(R**2 + np.absolute(Z_OFFSET - TIP_LENGTH)**2) # Distance from q1 to q3 joints
+        r = np.sqrt(R**2 + z**2) # Distance from q1 to q3 joints
 
-        q2 = -1 * np.arccos((r**2 - L1**2 - L2**2)/(2*L1*L2)) # Law of cosines solves q2
+        q2 = np.arccos((r**2 - L1**2 - L2**2)/(2*L1*L2)) # Law of cosines solves q2 and q1
+
+        # Difference of angle to pointer and interior angle
+        q1 = np.arctan2(R/z) - np.arctan2((L2*np.sin(q2))/(L1 + L2*np.cos(q2)))
+
+        q3 = np.pi - q2 - q1 # Net 180 degree rotation
 
     elif (surface == SURFACE_REACH):
         q0 = np.pi/2.0 # Fix the base joint to point directly forward
+
+    return (q0, q1, q2, q3)
