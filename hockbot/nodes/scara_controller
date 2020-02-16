@@ -52,23 +52,26 @@ class ScaraController(object):
         self._cur_pos = msg
 
     def _move_cart_cb(self, req):
+        assert req.move_time > 0.2, 'move_time too small'
         if req.joint_space_interp:
             theta_1, theta_2 = ikin(req.x, req.y)[0]
             goal_state = JointState(
                 name=['Scara/0', 'Scara/1'],
                 position=[theta_1, theta_2])
-            traj = plan_trajectory(self._cur_pos, goal_state)
+            traj = plan_trajectory(self._cur_pos, goal_state, req.move_time)
         else:
-            traj = self.plan_cartesian(np.array([req.x, req.y]))
+            traj = self.plan_cartesian(np.array([req.x, req.y]), req.move_time)
         self._send_hebi_command_traj(traj, 0.01)
+        return True
 
     def _move_joint_cb(self, req):
-        theta_1, theta_2 = ikin(req.x, req.y)[0]
+        assert req.move_time > 0.2, 'move_time too small'
         goal_state = JointState(
             name=['Scara/0', 'Scara/1'],
-            position=[theta_1, theta_2])
-        traj = plan_trajectory(self._cur_pos, goal_state)
+            position=[req.theta1, req.theta2])
+        traj = plan_trajectory(self._cur_pos, goal_state, req.move_time)
         self._send_hebi_command_traj(traj, 0.01)
+        return True
 
     def _send_hebi_command_traj(self, joint_states, dt):
         """Sends a trajectory to robot by streaming to

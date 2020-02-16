@@ -1,5 +1,10 @@
 <launch>
+  <param name="robot_description" textfile="$(find hockbot)/urdf/robot_scara.urdf"/>
   <node name="hebiros_node" pkg="hebiros" type="hebiros_node" respawn="false" output="screen"/>
   <node name="pydefinerobot" pkg="ee134" type="pydefinerobot.py" respawn="false" output="screen"/>
   <node name="scara_controller" pkg="hockbot" type="scara_controller" respawn="false" output="screen"/>
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+  	<param name="~ignore_timestamp" value="true"/>
+  	<param name="~joint_states" value="/hebiros/robot/feedback/joint_state"/>
+  </node>
 </launch>

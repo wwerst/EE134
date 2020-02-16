@@ -53,7 +53,7 @@ jobs:
           name: Test Code
           command: |
             . devel/setup.bash
-            cd src/hockbot/hockbot
+            cd src/ee134/hockbot
             sudo apt install python-pytest
             pytest
 
