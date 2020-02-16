@@ -16,12 +16,14 @@ r2 = 0.5 # meters, length of the second arm
 #  v
 # theta_1----(r1)------theta_2------(r2)----tip
 
+
 def fkin(theta_1, theta_2):
     '''
     Returns (x, y) position as a function of the joint angles q0, q1
     '''
     return (SCARA_X_OFFSET +r1*np.cos(theta_1) + r2*np.cos(theta_1 + theta_2) , 
             SCARA_Y_OFFSET +r1*np.sin(theta_1) + r2*np.sin(theta_1 + theta_2))
+
 
 def ikin(x, y):
     '''
@@ -44,17 +46,26 @@ def ikin(x, y):
     # calculate radius from base to desired point
     rt = x**2 + y**2
     # angle from base to desired point
-    theta_t = np.arctan(y/x)
+    theta_t = np.arctan2(y, x)
     
     # calculate the angle at the elbow using law  of cosines
     theta_1_2 = np.arccos((x**2 + y**2 - r1**2 -r2**2)/(2*r1*r2))   
 
     # difference between angles 
-    theta_1_1 = theta_t - np.arctan((r1*np.sin(theta_1_2))/(r1 + r2 * np.cos(theta_1_2)))
+    theta_1_1 = theta_t - np.arctan2((r1*np.sin(theta_1_2)), (r1 + r2 * np.cos(theta_1_2)))
 
     # calculate the second set of angles
     theta_2_2 = -1 * theta_1_2
 
     theta_2_1 = theta_t + (theta_t - theta_1_1)
-   
-    return [(theta_1_1, theta_1_2), (theta_2_1, theta_2_2)]   
+
+    return np.array(
+        [[theta_1_1, theta_1_1+theta_1_2],
+         [theta_2_1, theta_2_1+theta_2_2]])
+
+
+def jacobian(thetas):
+    return np.array(
+        [[-r1*np.sin(thetas[0]), -r2*np.sin(thetas[1])],
+         [r1*np.cos(thetas[0]), r2*np.cos(thetas[1])]])
+
