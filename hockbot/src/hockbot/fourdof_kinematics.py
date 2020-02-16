@@ -3,10 +3,7 @@
 #   fourdof_kinematics.py
 
 import rospy
-
 import numpy as np
-from scipy.spatial.transform import Rotation
-
 from urdf_parser_py.urdf import URDF
 import rospkg
 
@@ -33,17 +30,6 @@ L2 = joints[6].origin.xyz[0]
 SURFACE_PLAY = 0
 SURFACE_COLLECT = 1
 
-#
-#  Matrix Manipulation Utilities
-#
-def vec(x, y, z):
-    return np.array([x, y, z])
-def Rx(q):
-    return Rotation.from_rotvec(q * vec(1, 0, 0))
-def Ry(q):
-    return Rotation.from_rotvec(q * vec(0, 1, 0))
-def Rz(q):
-    return Rotation.from_rotvec(q * vec(0, 0, 1))
 
 def fkin(q0, q1, q2, q3, q4):
     '''
@@ -111,6 +97,17 @@ def ikin(x, y, z, surface=SURFACE_PLAY):
             return None
 
     if (surface == SURFACE_COLLECT):
+        if (z**2 + TIP_LENGTH**2 > (L1+L2)**2 or np.absolute(y) > L1 + L2): # Cannot reach longer than arms
+            print('Robot cannot reach')
+            return None
+        elif (not np.allclose(x, 0)): # Need to reach in the x=0 plane
+            print('Robot cannot reach out of x=0 plane')
+            return None
+        elif (z > 0): # Don't want to use these kinematics in the z>0 regime
+            print('Cannot go above xy plane')
+            return None
+        elif (y > -1 * Y_OFFSET): # Don't crash into the side of the table
+            print('Crash into table')
             return None
 
     # Calculate the kinematics
@@ -119,32 +116,44 @@ def ikin(x, y, z, surface=SURFACE_PLAY):
         # the xy plane
         q0 = np.arctan2(y, x)
 
-        # Calculate the 3 joints above the base joint
+        # Calculate the 2 joints above the base joint
 
         R = np.sqrt(x**2 + y**2) # Distance in the cartesian plane from base to tip touchdown
         r = np.sqrt(R**2 + (z + TIP_LENGTH)**2) # Distance from q1 to q3 joints
 
-        q2 = np.arccos((r**2 - L1**2 - L2**2)/(2*L1*L2)) # Law of cosines solves q2 and q1
+        q2 = np.arccos((r**2 - L1**2 - L2**2)/(2*L1*L2)) # Law of cosines solves q2
 
         # Difference of angle to pointer and interior angle
         q1 = np.arctan2(R,(z + TIP_LENGTH)) - np.arctan2((L2*np.sin(q2)),(L1 + L2*np.cos(q2)))
 
         q3 = np.pi - q2 - q1 # Net 180 degree rotation
 
-    elif (surface == SURFACE_REACH):
+    elif (surface == SURFACE_COLLECT):
         q0 = np.pi/2.0 # Fix the base joint to point directly forward
+
+        # Calculate the 2 joints behind the base joint
+
+        r = np.sqrt((y - TIP_LENGTH)**2 + z**2) # Distance from q1 to q3 joints
+
+        q2 = -1 * np.arccos((r**2 - L1**2 - L2**2)/(2*L1*L2)) # Law of cosines solves q2
+
+        # Difference of angle to pointer and interior angle
+        q1 = (np.arctan2(np.absolute(y - TIP_LENGTH), np.absolute(z)) + np.arctan2((L2*np.sin(np.absolute(q2))),(L1 + L2*np.cos(q2)))) - np.pi
+
+        q3 = (-3.0/2)*np.pi - q1 - q2 # Net 270 degree backwards rotation
 
     return (q0, q1, q2, q3)
 
 
-# Test cases (always keep tip pointed down)
+# Test cases (always keep tip pointed down or against side of table)
 if __name__ == "__main__":
-    theta0 = 3
-    theta1 = 1.13
-    theta2 = 0.6
-    theta3 = np.pi - theta1 - theta2
+    theta0 = np.pi/2
+    theta1 = (-1.0/6)*np.pi - 0.00001
+    theta2 = (-2.0/3)*np.pi - 0.00001
+    theta3 = (-3.0/2)*np.pi - theta1 - theta2
+    print(theta0, theta1, theta2, theta3)
     a = fkin(theta0, theta1, theta2, theta3, 0)
     print(a)
-    b = ikin(a[0], a[1], a[2])
+    b = ikin(a[0], a[1], a[2], surface=SURFACE_COLLECT)
     print(b)
     print(fkin(b[0], b[1], b[2], b[3], 0))
