@@ -21,15 +21,16 @@ def fkin(theta_1, theta_2):
     '''
     Returns (x, y) position as a function of the joint angles q0, q1
     '''
-    return (SCARA_X_OFFSET +r1*np.cos(theta_1) + r2*np.cos(theta_1 + theta_2) , 
-            SCARA_Y_OFFSET +r1*np.sin(theta_1) + r2*np.sin(theta_1 + theta_2))
+    return np.array([
+        SCARA_X_OFFSET +r1*np.cos(theta_1) + r2*np.cos(-theta_2),
+        SCARA_Y_OFFSET +r1*np.sin(theta_1) + r2*np.sin(-theta_2)])
 
 
 def ikin(x, y):
     '''
-    Returns array of [(theta_1_1, theta_1_2), (theta_2_1, theta_2_2)] as a 
+    Returns array of [(theta_1_1, theta_1_2), (theta_2_1, theta_2_2)] as a
     function of the (x, y) position given. Returns
-    None if (x, y) is out of bounds or out of reach. 
+    None if (x, y) is out of bounds or out of reach.
     '''
 
     # Else, compute the branches
@@ -60,8 +61,8 @@ def ikin(x, y):
     theta_2_1 = theta_t + (theta_t - theta_1_1)
 
     return np.array(
-        [[theta_1_1, theta_1_1+theta_1_2],
-         [theta_2_1, theta_2_1+theta_2_2]])
+        [[theta_1_1, -(theta_1_1+theta_1_2)],
+         [theta_2_1, -(theta_2_1+theta_2_2)]])
 
 
 def jacobian(thetas):
