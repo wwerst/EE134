@@ -44,8 +44,6 @@ def ikin(x, y):
     if (y < SCARA_Y_OFFSET):
         return None
 
-    # calculate radius from base to desired point
-    rt = x**2 + y**2
     # angle from base to desired point
     theta_t = np.arctan2(y, x)
     
