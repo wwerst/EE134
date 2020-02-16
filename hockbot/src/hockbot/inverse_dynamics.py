@@ -26,7 +26,6 @@ def plan_trajectory(starting_state, ending_state, total_time=0.8):
             # Use as placeholder for acceleration
             jstate.effort[i] = splines[i].deriv().deriv()(t)
         # Calculate torque
-        print(jstate)
         jstate.effort = calculate_dynamics(
             jstate.position,
             jstate.velocity,
@@ -62,7 +61,6 @@ def compute_1d_spline(starting_pos, ending_pos):
          [0, 1, 2, 3,  4,  5],
          [0, 0, 2, 6, 12, 20]], dtype=np.float32)
     coeff = np.linalg.solve(X, start_end_constraints)
-    print(coeff)
     # if not np.allclose(np.dot(X, coeff), start_end_constraints):
     #     raise ValueError('Unable to fit spline')
     return np.polynomial.polynomial.Polynomial(coeff)
