@@ -20,7 +20,7 @@
   <link name="q0minus"/>
 
 
-  <joint name="Chewbacca/q0" type="continuous">
+  <joint name="Picker/q0" type="continuous">
     <parent link="q0minus"/>
     <child  link="q0plus"/>
     <axis   xyz="0 0 1"/>
@@ -36,7 +36,7 @@
   <link name="q1minus"/>
 
 
-  <joint name="Chewbacca/q1" type="continuous">
+  <joint name="Picker/q1" type="continuous">
     <parent link="q1minus"/>
     <child  link="q1plus"/>
     <axis   xyz="0 0 1"/>
@@ -45,14 +45,14 @@
 
 
   <joint name="connect-q1plus-q2minus" type="fixed">
-    <parent link="motor1output"/>
-    <child  link="motor2base"/>
+    <parent link="q1plus"/>
+    <child  link="q2minus"/>
     <origin xyz="0.4 0 0" rpy="0 0 0"/>
   </joint>
   <link name="q2minus"/>
 
 
-  <joint name="Chewbacca/q2" type="continuous">
+  <joint name="Picker/q2" type="continuous">
     <parent link="q2minus"/>
     <child  link="q2plus"/>
     <axis   xyz="0 0 1"/>
@@ -68,7 +68,7 @@
   <link name="q3minus"/>
 
 
-  <joint name="Chewbacca/q3" type="continuous">
+  <joint name="Picker/q3" type="continuous">
     <parent link="q3minus"/>
     <child  link="q3plus"/>
     <axis   xyz="0 0 1"/>
@@ -84,7 +84,7 @@
   <link name="q4minus"/>
 
 
-  <joint name="Chewbacca/q4" type="continuous">
+  <joint name="Picker/q4" type="continuous">
     <parent link="q4minus"/>
     <child  link="q4plus"/>
     <axis   xyz="0 0 1"/>
