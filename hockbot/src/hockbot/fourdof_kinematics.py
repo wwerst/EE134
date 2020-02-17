@@ -2,14 +2,23 @@
 #
 #   fourdof_kinematics.py
 
+import rosgraph
 import rospy
 import numpy as np
 from urdf_parser_py.urdf import URDF
 import rospkg
 
-URDF_PATH = rospkg.RosPack().get_path('hockbot') + '/urdf/robot_4dof.urdf'
-robot = URDF.from_xml_file(URDF_PATH)
-joints = robot.joints
+
+def get_urdf(file_path='/urdf/robot_4dof.urdf'):
+    if rosgraph.is_master_online():
+        urdf = URDF.from_parameter_server()
+    else:
+        urdf_file = rospkg.RosPack().get_path('hockbot') + file_path
+        urdf = URDF.from_xml_file(urdf_file)
+    return urdf
+
+
+joints = get_urdf().joints
 
 # Constants ----------------------------------------------------------------------------------------
 
@@ -62,6 +71,7 @@ def fkin(q0, q1, q2, q3, q4):
     grip = q4
 
     return (x, y, z, theta, grip)
+
 
 def ikin(x, y, z, surface=SURFACE_PLAY):
     '''
