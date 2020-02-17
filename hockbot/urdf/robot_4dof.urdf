@@ -47,7 +47,7 @@
   <joint name="connect-q1plus-q2minus" type="fixed">
     <parent link="motor1output"/>
     <child  link="motor2base"/>
-    <origin xyz="0.5 0 0" rpy="0 0 0"/>
+    <origin xyz="0.283 0 0" rpy="0 0 0"/>
   </joint>
   <link name="q2minus"/>
 
@@ -63,7 +63,7 @@
   <joint name="connect-q2plus-q3minus" type="fixed">
     <parent link="q2plus"/>
     <child  link="q3minus"/>
-    <origin xyz="0.5 0 0" rpy="0 0 0"/>
+    <origin xyz="0.373 0 0" rpy="0 0 0"/>
   </joint>
   <link name="q3minus"/>
 
