@@ -20,7 +20,7 @@
   <link name="q0minus"/>
 
 
-  <joint name="Chewbacca/q0" type="continuous">
+  <joint name="Picker/0" type="continuous">
     <parent link="q0minus"/>
     <child  link="q0plus"/>
     <axis   xyz="0 0 1"/>
@@ -36,7 +36,7 @@
   <link name="q1minus"/>
 
 
-  <joint name="Chewbacca/q1" type="continuous">
+  <joint name="Picker/1" type="continuous">
     <parent link="q1minus"/>
     <child  link="q1plus"/>
     <axis   xyz="0 0 1"/>
@@ -52,7 +52,7 @@
   <link name="q2minus"/>
 
 
-  <joint name="Chewbacca/q2" type="continuous">
+  <joint name="Picker/2" type="continuous">
     <parent link="q2minus"/>
     <child  link="q2plus"/>
     <axis   xyz="0 0 1"/>
@@ -68,7 +68,7 @@
   <link name="q3minus"/>
 
 
-  <joint name="Chewbacca/q3" type="continuous">
+  <joint name="Picker/3" type="continuous">
     <parent link="q3minus"/>
     <child  link="q3plus"/>
     <axis   xyz="0 0 1"/>
