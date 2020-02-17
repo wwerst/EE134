@@ -42,21 +42,24 @@ class FourDoFConstants(object):
         self.L2 = joints[6].origin.xyz[0]
 
 
-
-
 class FourDoFKinematics(object):
 
     def __init__(self):
         self.CONST = FourDoFConstants()
 
-    def fkin(self, q0, q1, q2, q3, q4):
+    def fkin(self, q0, q1, q2, q3):
         '''
         Returns (x, y, z, theta, grip) as a function of actuator positions.
         q0-q3 take values in [0, 2Pi)
-        q4 takes values 0 or 1 (electromagnet off or on)
 
         theta represents pitch of gripper WRT vertical
         '''
+
+        # HACK negate some joint
+        q1 = -q1
+
+        q3 = -q3
+
 
         # Radial distance from base
         R = self.CONST.L1*np.sin(q1) + self.CONST.L2*np.sin(q1 + q2) + self.CONST.TIP_LENGTH*np.sin(q1 + q2 + q3)
@@ -76,10 +79,7 @@ class FourDoFKinematics(object):
         # Calculate theta
         theta = q1 + q2 + q3
 
-        # Grip is just q4
-        grip = q4
-
-        return (x, y, z, theta, grip)
+        return np.array([x, y, z, theta])
 
     def ikin(self, x, y, z, surface=SURFACE_PLAY):
         '''
@@ -160,5 +160,5 @@ class FourDoFKinematics(object):
 
             q3 = (-3.0/2)*np.pi - q1 - q2 # Net 270 degree backwards rotation
 
-        return (q0, q1, q2, q3)
+        return np.array([q0, -q1, q2, -q3])
 
