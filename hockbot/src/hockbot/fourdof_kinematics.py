@@ -9,6 +9,11 @@ from urdf_parser_py.urdf import URDF
 import rospkg
 
 
+# Functional constants
+SURFACE_PLAY = 0
+SURFACE_COLLECT = 1
+
+
 def get_urdf(file_path='/urdf/robot_4dof.urdf'):
     if rosgraph.is_master_online():
         urdf = URDF.from_parameter_server()
@@ -17,153 +22,143 @@ def get_urdf(file_path='/urdf/robot_4dof.urdf'):
         urdf = URDF.from_xml_file(urdf_file)
     return urdf
 
+class FourDoFConstants(object):
 
-joints = get_urdf().joints
+    def __init__(self):
+        joints = get_urdf().joints
+        # Robot constants
+        self.X_OFFSET = joints[0].origin.xyz[0]
+        self.Y_OFFSET = joints[0].origin.xyz[1]
+        self.Z_OFFSET = joints[2].origin.xyz[2]
 
-# Constants ----------------------------------------------------------------------------------------
+        self.TIP_LENGTH = np.sqrt(
+            joints[-1].origin.xyz[0]**2 +
+            joints[-1].origin.xyz[1]**2 +
+            joints[-1].origin.xyz[2]**2)
+            # Only one of these should be nonzero anyway,
+            # but compute full length for completeness
 
-# Robot constants
-X_OFFSET = joints[0].origin.xyz[0]
-Y_OFFSET = joints[0].origin.xyz[1]
-Z_OFFSET = joints[2].origin.xyz[2]
-
-TIP_LENGTH = np.sqrt(   joints[-1].origin.xyz[0]**2 + 
-                        joints[-1].origin.xyz[1]**2 + 
-                        joints[-1].origin.xyz[2]**2) # Only one of these should be nonzero anyway, 
-                                                     # but compute full length for completeness
-
-L1 = joints[4].origin.xyz[0]
-L2 = joints[6].origin.xyz[0]
-
-# Functional constants
-SURFACE_PLAY = 0
-SURFACE_COLLECT = 1
+        self.L1 = joints[4].origin.xyz[0]
+        self.L2 = joints[6].origin.xyz[0]
 
 
-def fkin(q0, q1, q2, q3, q4):
-    '''
-    Returns (x, y, z, theta, grip) as a function of actuator positions.
-    q0-q3 take values in [0, 2Pi)
-    q4 takes values 0 or 1 (electromagnet off or on)
-
-    theta represents pitch of gripper WRT vertical
-    '''
-
-    # Radial distance from base
-    R = L1*np.sin(q1) + L2*np.sin(q1 + q2) + TIP_LENGTH*np.sin(q1 + q2 + q3)
-
-    # and height above robot z
-    z = L1*np.cos(q1) + L2*np.cos(q1 + q2) + TIP_LENGTH*np.cos(q1 + q2 + q3)
-
-    # x and y displacements from robot origin
-    x = R*np.cos(q0)
-    y = R*np.sin(q0)
-
-    # Adjust for world coordinates
-    x = x + X_OFFSET
-    y = y + Y_OFFSET
-    z = z + Z_OFFSET
-
-    # Calculate theta
-    theta = q1 + q2 + q3
-
-    # Grip is just q4
-    grip = q4
-
-    return (x, y, z, theta, grip)
 
 
-def ikin(x, y, z, surface=SURFACE_PLAY):
-    '''
-    Returns (q0, q1, q2, q3) as a function of requested cartesian position.
+class FourDoFKinematics(object):
 
-    If surface = SURFACE_PLAY then (x, y, z) refers to a position in the playing area relative to
-    the bottom left corner. Tip will be pointed directly in the -z direction. +z is the height off
-    the xy plane.
+    def __init__(self):
+        self.CONST = FourDoFConstants()
 
-    If surface = SURFACE_COLLECT then x is irrelevant and (y, z) represent the position of the
-    gripper relative to the above origin. -z goes below the xy plane (to get the puck) and -y
-    brings the gripper away from the side of the table. The gripper tip will be pointed directly 
-    at the xz plane.
+    def fkin(self, q0, q1, q2, q3, q4):
+        '''
+        Returns (x, y, z, theta, grip) as a function of actuator positions.
+        q0-q3 take values in [0, 2Pi)
+        q4 takes values 0 or 1 (electromagnet off or on)
 
-    Returns None if position out of bounds or out of reach
-    '''
+        theta represents pitch of gripper WRT vertical
+        '''
 
-    # Work from the robot's reference frame
-    x = x - X_OFFSET
-    y = y - Y_OFFSET
-    z = z - Z_OFFSET
+        # Radial distance from base
+        R = self.CONST.L1*np.sin(q1) + self.CONST.L2*np.sin(q1 + q2) + self.CONST.TIP_LENGTH*np.sin(q1 + q2 + q3)
 
-    # Check out of bounds/reach
-    if (surface == SURFACE_PLAY):
-        if (x**2 + y**2 + (z + TIP_LENGTH)**2 > (L1+L2)**2): # Cannot reach longer than arms
-            print('Robot cannot reach')
-            return None
-        elif (y < 0): # Cannot reach behind itself in play mode
-            print('Cant go behind robot')
-            return None
-        elif (z < -1 * Z_OFFSET): # Don't crash into the table
-            print('Crash into table')
-            return None
+        # and height above robot z
+        z = self.CONST.L1*np.cos(q1) + self.CONST.L2*np.cos(q1 + q2) + self.CONST.TIP_LENGTH*np.cos(q1 + q2 + q3)
 
-    if (surface == SURFACE_COLLECT):
-        if (z**2 + TIP_LENGTH**2 > (L1+L2)**2 or np.absolute(y) > L1 + L2): # Cannot reach longer than arms
-            print('Robot cannot reach')
-            return None
-        elif (not np.allclose(x, 0)): # Need to reach in the x=0 plane
-            print('Robot cannot reach out of x=0 plane')
-            return None
-        elif (z > 0): # Don't want to use these kinematics in the z>0 regime
-            print('Cannot go above xy plane')
-            return None
-        elif (y > -1 * Y_OFFSET): # Don't crash into the side of the table
-            print('Crash into table')
-            return None
+        # x and y displacements from robot origin
+        x = R*np.cos(q0)
+        y = R*np.sin(q0)
 
-    # Calculate the kinematics
-    if (surface == SURFACE_PLAY):
-        # Easy to calculate the base angle, as it's just the rotation necessary to hit the point on 
-        # the xy plane
-        q0 = np.arctan2(y, x)
+        # Adjust for world coordinates
+        x = x + self.CONST.X_OFFSET
+        y = y + self.CONST.Y_OFFSET
+        z = z + self.CONST.Z_OFFSET
 
-        # Calculate the 2 joints above the base joint
+        # Calculate theta
+        theta = q1 + q2 + q3
 
-        R = np.sqrt(x**2 + y**2) # Distance in the cartesian plane from base to tip touchdown
-        r = np.sqrt(R**2 + (z + TIP_LENGTH)**2) # Distance from q1 to q3 joints
+        # Grip is just q4
+        grip = q4
 
-        q2 = np.arccos((r**2 - L1**2 - L2**2)/(2*L1*L2)) # Law of cosines solves q2
+        return (x, y, z, theta, grip)
 
-        # Difference of angle to pointer and interior angle
-        q1 = np.arctan2(R,(z + TIP_LENGTH)) - np.arctan2((L2*np.sin(q2)),(L1 + L2*np.cos(q2)))
+    def ikin(self, x, y, z, surface=SURFACE_PLAY):
+        '''
+        Returns (q0, q1, q2, q3) as a function of requested cartesian position.
 
-        q3 = np.pi - q2 - q1 # Net 180 degree rotation
+        If surface = SURFACE_PLAY then (x, y, z) refers to a position in the playing area relative to
+        the bottom left corner. Tip will be pointed directly in the -z direction. +z is the height off
+        the xy plane.
 
-    elif (surface == SURFACE_COLLECT):
-        q0 = np.pi/2.0 # Fix the base joint to point directly forward
+        If surface = SURFACE_COLLECT then x is irrelevant and (y, z) represent the position of the
+        gripper relative to the above origin. -z goes below the xy plane (to get the puck) and -y
+        brings the gripper away from the side of the table. The gripper tip will be pointed directly 
+        at the xz plane.
 
-        # Calculate the 2 joints behind the base joint
+        Returns None if position out of bounds or out of reach
+        '''
 
-        r = np.sqrt((y - TIP_LENGTH)**2 + z**2) # Distance from q1 to q3 joints
+        # Work from the robot's reference frame
+        x = x - self.CONST.X_OFFSET
+        y = y - self.CONST.Y_OFFSET
+        z = z - self.CONST.Z_OFFSET
 
-        q2 = -1 * np.arccos((r**2 - L1**2 - L2**2)/(2*L1*L2)) # Law of cosines solves q2
+        # Check out of bounds/reach
+        if (surface == SURFACE_PLAY):
+            if (x**2 + y**2 + (z + self.CONST.TIP_LENGTH)**2 > (self.CONST.L1+self.CONST.L2)**2): # Cannot reach longer than arms
+                print('Robot cannot reach')
+                return None
+            elif (y < 0): # Cannot reach behind itself in play mode
+                print('Cant go behind robot')
+                return None
+            elif (z < -1 * self.CONST.Z_OFFSET): # Don't crash into the table
+                print('Crash into table')
+                return None
 
-        # Difference of angle to pointer and interior angle
-        q1 = (np.arctan2(np.absolute(y - TIP_LENGTH), np.absolute(z)) + np.arctan2((L2*np.sin(np.absolute(q2))),(L1 + L2*np.cos(q2)))) - np.pi
+        if (surface == SURFACE_COLLECT):
+            if (z**2 + self.CONST.TIP_LENGTH**2 > (self.CONST.L1+self.CONST.L2)**2 or np.absolute(y) > self.CONST.L1 + self.CONST.L2): # Cannot reach longer than arms
+                print('Robot cannot reach')
+                return None
+            elif (not np.allclose(x, 0)): # Need to reach in the x=0 plane
+                print('Robot cannot reach out of x=0 plane')
+                return None
+            elif (z > 0): # Don't want to use these kinematics in the z>0 regime
+                print('Cannot go above xy plane')
+                return None
+            elif (y > -1 * self.CONST.Y_OFFSET): # Don't crash into the side of the table
+                print('Crash into table')
+                return None
 
-        q3 = (-3.0/2)*np.pi - q1 - q2 # Net 270 degree backwards rotation
+        # Calculate the kinematics
+        if (surface == SURFACE_PLAY):
+            # Easy to calculate the base angle, as it's just the rotation necessary to hit the point on 
+            # the xy plane
+            q0 = np.arctan2(y, x)
 
-    return (q0, q1, q2, q3)
+            # Calculate the 2 joints above the base joint
 
+            R = np.sqrt(x**2 + y**2) # Distance in the cartesian plane from base to tip touchdown
+            r = np.sqrt(R**2 + (z + self.CONST.TIP_LENGTH)**2) # Distance from q1 to q3 joints
 
-# Test cases (always keep tip pointed down or against side of table)
-if __name__ == "__main__":
-    theta0 = np.pi/2
-    theta1 = (-1.0/6)*np.pi - 0.00001
-    theta2 = (-2.0/3)*np.pi - 0.00001
-    theta3 = (-3.0/2)*np.pi - theta1 - theta2
-    print(theta0, theta1, theta2, theta3)
-    a = fkin(theta0, theta1, theta2, theta3, 0)
-    print(a)
-    b = ikin(a[0], a[1], a[2], surface=SURFACE_COLLECT)
-    print(b)
-    print(fkin(b[0], b[1], b[2], b[3], 0))
+            q2 = np.arccos((r**2 - self.CONST.L1**2 - self.CONST.L2**2)/(2*self.CONST.L1*self.CONST.L2)) # Law of cosines solves q2
+
+            # Difference of angle to pointer and interior angle
+            q1 = np.arctan2(R,(z + self.CONST.TIP_LENGTH)) - np.arctan2((self.CONST.L2*np.sin(q2)),(self.CONST.L1 + self.CONST.L2*np.cos(q2)))
+
+            q3 = np.pi - q2 - q1 # Net 180 degree rotation
+
+        elif (surface == SURFACE_COLLECT):
+            q0 = np.pi/2.0 # Fix the base joint to point directly forward
+
+            # Calculate the 2 joints behind the base joint
+
+            r = np.sqrt((y - self.CONST.TIP_LENGTH)**2 + z**2) # Distance from q1 to q3 joints
+
+            q2 = -1 * np.arccos((r**2 - self.CONST.L1**2 - self.CONST.L2**2)/(2*self.CONST.L1*self.CONST.L2)) # Law of cosines solves q2
+
+            # Difference of angle to pointer and interior angle
+            q1 = (np.arctan2(np.absolute(y - self.CONST.TIP_LENGTH), np.absolute(z)) + np.arctan2((self.CONST.L2*np.sin(np.absolute(q2))),(self.CONST.L1 + self.CONST.L2*np.cos(q2)))) - np.pi
+
+            q3 = (-3.0/2)*np.pi - q1 - q2 # Net 270 degree backwards rotation
+
+        return (q0, q1, q2, q3)
+
