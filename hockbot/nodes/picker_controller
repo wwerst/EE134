@@ -50,7 +50,7 @@ class PickerController(object):
     @property
     def fourdof_cur_pos(self):
         cur_pos = self._cur_pos
-        cur_pos_dict = {name: cur_pos.position[i] for i, name in enumerate(cur_pos.names)}
+        cur_pos_dict = {name: cur_pos.position[i] for i, name in enumerate(cur_pos.name)}
         return np.array([
             cur_pos_dict['Picker/0'],
             cur_pos_dict['Picker/1'],
@@ -60,16 +60,16 @@ class PickerController(object):
     def jointstate_fourdof_angles(self, angles):
         """Convert fourdof angle command to 5-DoF command."""
         joint_names = ['Picker/0', 'Picker/1', 'Picker/2', 'Picker/3', 'Picker/4']
-        joint_pos = angles[0:3] + [0] + angles[3]
+        joint_pos = np.insert(angles, 3, 0)
         return JointState(
-            names=joint_names,
-            positions=joint_pos,
+            name=joint_names,
+            position=joint_pos,
             velocity=[0]*len(joint_names),
-            effort=[0]*len(joint_names))
+            effort=[0.0, 5.0, -4.0, 0.0, 0.0])
 
     def _move_cart_cb(self, req):
         assert req.move_time > 0.2, 'move_time too small'
-        if req.joint_space_interp:
+        if not req.cartesian_interp:
             raise NotImplementedError('Joint movement not supported')
         else:
             traj = self.plan_cartesian(np.array([req.x, req.y, req.z]), req.tool_vertical, req.move_time)
@@ -86,7 +86,7 @@ class PickerController(object):
 
     def plan_cartesian(self, goal_pos, eff_vertical, goal_time=5.0, dt=0.01):
         eff_surface = SURFACE_PLAY if eff_vertical else SURFACE_COLLECT
-        start_pos = self._kin.fkin(*self.fourdof_cur_pos)
+        start_pos = self._kin.fkin(*self.fourdof_cur_pos)[0:3]
         def interp_pos(fraction):
             print('start_pos: {}'.format(start_pos))
             print('goal_pos: {}'.format(goal_pos))
@@ -96,7 +96,7 @@ class PickerController(object):
         for frac in np.linspace(0.0, 1.0, goal_time//dt):
             step_pos = interp_pos(frac)
             print('Step_Pos: {}'.format(step_pos))
-            solution_angles = self._kin.ikin(*step_pos, eff_surface)
+            solution_angles = self._kin.ikin(step_pos[0], step_pos[1], step_pos[2], eff_surface)
 
             jstate = self.jointstate_fourdof_angles(solution_angles)
             positions.append(jstate)
