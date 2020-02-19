@@ -26,15 +26,15 @@ class ScaraController(object):
 
     def __init__(self):
         self._hebi_commander = rospy.Publisher(
-            '/hebiros/robot/command/joint_state',
+            '/hebiros/scara/command/joint_state',
             JointState,
             queue_size=1)
 
         self._cur_pos = rospy.wait_for_message(
-            '/hebiros/robot/feedback/joint_state',
+            '/hebiros/scara/feedback/joint_state',
             JointState)
         self._pos_sub = rospy.Subscriber(
-            '/hebiros/robot/feedback/joint_state',
+            '/hebiros/scara/feedback/joint_state',
             JointState,
             self._pos_cb)
         self._joint_srv = rospy.Service(
@@ -95,7 +95,7 @@ class ScaraController(object):
             goal.waypoints.append(waypoint_msg)
             goal.times.append(t)
             t += dt
-        client = actionlib.SimpleActionClient('/hebiros/robot/trajectory', TrajectoryAction)
+        client = actionlib.SimpleActionClient('/hebiros/scara/trajectory', TrajectoryAction)
         client.wait_for_server()
         client.send_goal(goal)
         client.wait_for_result()
