@@ -110,7 +110,8 @@ class PickerController(object):
             return start_pos + (goal_pos - start_pos)*fraction
         positions = []
         for frac in np.linspace(0.0, 1.0, goal_time//dt):
-            step_pos = interp_pos(frac)
+            smooth_frac = 2*frac**2 if frac < 0.5 else (-2*(frac-1)**2 + 1)
+            step_pos = interp_pos(smooth_frac)
             print('Step_Pos: {}'.format(step_pos))
             solution_angles = self._kin.ikin(step_pos[0], step_pos[1], step_pos[2], eff_surface)
 
