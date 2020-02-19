@@ -19,10 +19,10 @@ class Test4DoFKinematics(unittest.TestCase):
         theta2 = (-2.0/3)*np.pi
         theta3 = (-3.0/2)*np.pi - theta1 - theta2
         res = kin.fkin(theta0, theta1, theta2, theta3)
-        assert np.allclose(res, [-2.4492935982947072e-17, -0.40000000000000013, 9.265260047530536e-17, -4.71238898038469])
+        assert np.allclose(res, [-1.11136697e-17, -1.81500000e-01, 4.16687730e-01, 5.23598776e-01])
 
     def test_ikin(self):
         kin = FourDoFKinematics()
         b = kin.ikin(0, -0.4, 0, surface=SURFACE_COLLECT)
         print(b)
-        assert np.allclose(b, [1.5707963267948966, 0.5235987755982987, -2.0943951023931957, 2.0943951023931957])
+        assert np.allclose(b, [1.57079633, 0.93042535, -1.38978214, 2.39218149])
