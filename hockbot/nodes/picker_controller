@@ -21,6 +21,7 @@ from hockbot.fourdof_kinematics import (
     SURFACE_COLLECT,
 )
 from hockbot.inverse_dynamics import plan_trajectory
+from hockbot.gravity_comp import joint_gravity_torque
 
 
 class PickerController(object):
@@ -74,7 +75,7 @@ class PickerController(object):
             name=joint_names,
             position=joint_pos,
             velocity=[0]*len(joint_names),
-            effort=[0]*len(joint_names))
+            effort=joint_gravity_torque(joint_pos))
 
     def _move_cart_cb(self, req):
         assert req.move_time > 0.2, 'move_time too small'
