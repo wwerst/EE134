@@ -22,6 +22,7 @@ from hockbot.fourdof_kinematics import (
 )
 from hockbot.inverse_dynamics import plan_trajectory
 from hockbot.gravity_comp import joint_gravity_torque
+from hockbot.utils import remap_joint_state
 
 
 class PickerController(object):
@@ -99,6 +100,8 @@ class PickerController(object):
         with self._cmd_pos_lock:
             cmd_pos = self._cmd_pos
         if cmd_pos is not None:
+            cmd_pos = remap_joint_state(cmd_pos, ['Picker/0', 'Picker/1', 'Picker/2', 'Picker/3', 'Picker/4'])
+            cmd_pos.effort = joint_gravity_torque(cmd_pos.position)
             self._hebi_commander.publish(cmd_pos)
 
     def plan_cartesian(self, goal_pos, eff_vertical, goal_time=5.0, dt=0.01):
