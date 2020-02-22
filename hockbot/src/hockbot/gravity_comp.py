@@ -1,7 +1,7 @@
 import numpy as np
 
 j4_param = -0.18
-j2_param = -3.5
+j2_param = -3.8
 j1_param = -5.0
 
 

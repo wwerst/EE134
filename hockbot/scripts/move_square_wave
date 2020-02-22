@@ -6,14 +6,14 @@ import rospy
 from sensor_msgs.msg import JointState
 from hockbot.gravity_comp import joint_gravity_torque
 from hockbot.utils import (
-    blocking_trianglewave,
+    blocking_squarewave,
     remap_joint_state,
     quadratic_interp_joint_state,
 )
 
 JOINT_INDEX = 0
 AMPLITUDE = 0.00
-PERIOD = 2
+PERIOD = 10
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
         '/hebiros/picker/feedback/joint_state',
         JointState)
     cur_pos = remap_joint_state(cur_pos, ['Picker/{}'.format(i) for i in range(5)])
-    blocking_trianglewave(cmd_pub, cur_pos, args.joint_index, args.amplitude, PERIOD, joint_gravity_torque)
+    blocking_squarewave(cmd_pub, cur_pos, args.joint_index, args.amplitude, PERIOD, joint_gravity_torque)
 
 
 if __name__ == '__main__':

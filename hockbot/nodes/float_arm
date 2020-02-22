@@ -21,6 +21,7 @@ class FloatArm(object):
 
     def _pos_cb(self, msg):
         new_cmd = remap_joint_state(msg, ['Picker/0', 'Picker/1', 'Picker/2', 'Picker/3', 'Picker/4'])
+        new_cmd.velocity = [0]*5
         new_cmd.position[3] = 0.0
         new_cmd.effort = joint_gravity_torque(new_cmd.position)
         self._hebi_commander.publish(new_cmd)

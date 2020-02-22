@@ -80,3 +80,50 @@ def blocking_trianglewave(pub, cmdmsg, joint, amplitude, period, gravity=None):
 
         # Wait for the next turn.
         servo.sleep()
+
+
+def blocking_squarewave(pub, cmdmsg, joint, amplitude, period, gravity=None):
+    """Triangle Wave
+    Move a single joint according to a triangle wave of given
+    amplitude and period.  Use a gravity model if available.
+    """
+    # Report
+    rospy.loginfo('Running triangle wave on jnt %d, amp %f, period %f ...' %
+                  (joint, amplitude, period))
+
+    # Make sure we have a positive period.
+    period = max(period, 0.01)
+
+    # Remember the center and pre-compute the speed.
+    center = cmdmsg.position[joint]
+    speed  = 4.0 * amplitude / period
+
+    # Use a 100Hz servo to send the commands.
+    servo = rospy.Rate(100)
+    starttime = rospy.Time.now()
+    while not rospy.is_shutdown():
+        # Current time (since start of the last cycle)
+        servotime = rospy.Time.now()
+        t = (servotime - starttime).to_sec()
+
+        # Build and publish the command message.  If we have a gravity
+        # model, compute the gravity effort.  Leave other values alone.
+        cmdmsg.header.stamp = servotime
+        if   (t <= 0.5 * period):
+            cmdmsg.position[joint] = center + amplitude / 2.0
+            cmdmsg.velocity[joint] = 0
+        else:
+            cmdmsg.position[joint] = center - amplitude / 2.0
+            cmdmsg.velocity[joint] = 0
+        if callable(gravity):
+            cmdmsg.effort = gravity(cmdmsg.position);
+        pub.publish(cmdmsg)
+
+        # Shift the (period's) start time after a full period
+        if (t >= period):
+            starttime = starttime + rospy.Duration.from_sec(period)
+
+        # Wait for the next turn.
+        servo.sleep()
+
+
