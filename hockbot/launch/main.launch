@@ -5,7 +5,7 @@
   <group if="$(arg use_picker)">
     <param name="robot_description" textfile="$(find hockbot)/urdf/robot_4dof.urdf"/>
     <node name="define_picker_robot" pkg="hockbot" type="define_picker_robot" respawn="false" output="screen"/>
-    <node name="picker_controller" pkg="hockbot" type="picker_controller" respawn="false" output="screen"/>
+    <!-- <node name="picker_controller" pkg="hockbot" type="picker_controller" respawn="false" output="screen"/> -->
     <node name="joint_state_publisher" pkg="joint_state_publisher" respawn="false" type="joint_state_publisher">
       <rosparam param="source_list">["/hebiros/picker/feedback/joint_state"]</rosparam>
       <param name="use_mimic_tags" value="true"/>
