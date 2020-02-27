@@ -1,0 +1,36 @@
+#!/usr/bin/env python2
+
+
+from sensor_msgs.msg import JointState
+from hockbot.gravity_comp import joint_gravity_torque
+from hockbot.utils import remap_joint_state
+import rospy
+
+
+class FloatArm(object):
+
+    def __init__(self):
+        self._hebi_commander = rospy.Publisher(
+            '/hebiros/picker/command/joint_state',
+            JointState,
+            queue_size=1)
+        self._pos_sub = rospy.Subscriber(
+            '/hebiros/picker/feedback/joint_state',
+            JointState,
+            self._pos_cb)
+
+    def _pos_cb(self, msg):
+        new_cmd = remap_joint_state(msg, ['Picker/0', 'Picker/1', 'Picker/2', 'Picker/3', 'Picker/4'])
+        new_cmd.position[3] = 0.0
+        new_cmd.effort = joint_gravity_torque(new_cmd.position)
+        self._hebi_commander.publish(new_cmd)
+
+
+def main():
+    rospy.init_node('float_arm')
+    floater = FloatArm()
+    rospy.spin()
+
+
+if __name__ == '__main__':
+    main()
