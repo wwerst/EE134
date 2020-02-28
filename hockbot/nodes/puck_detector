@@ -12,13 +12,14 @@
 #
 
 # ROS Imports
-from computer_vision import process_image
 import rospy
 import sensor_msgs.msg
 from geometry_msgs.msg import PointStamped
 import cv2
 import cv_bridge
 import numpy as np
+
+from hockbot.computer_vision import process_image
 
 #
 #  Detector Node Class
@@ -32,14 +33,13 @@ class Detector:
         # Pick the topic names.  The source image topic can be
         # remapped in the command line.  The '~' places the output
         # image topic will be under the node name.
-        source_topic = rospy.resolve_name("image")
         output_topic = rospy.resolve_name("~image")
         point_output_topic = rospy.resolve_name("/detector/strikers")
 
         # Subscribe to the source topic.  Using a queue size of one
         # means only the most recent message is stored for the next
         # subscriber callback.
-        rospy.Subscriber('/cv_camera/image_raw',
+        rospy.Subscriber('/logitech_cam/image_raw',
                          sensor_msgs.msg.Image,
                          self.process,
                          queue_size=1)
@@ -55,7 +55,6 @@ class Detector:
 
         # Report.
         rospy.loginfo("Detector configured with:")
-        rospy.loginfo("Image source topic: " + source_topic)
         rospy.loginfo("Image output topic: " + output_topic)
 
     def process(self, rosImage):
@@ -79,7 +78,7 @@ class Detector:
 if __name__ == "__main__":
     # Prepare the node.  You can override the name using the
     # 'rosrun .... __name:=something' convention.
-    rospy.init_node('detector')
+    rospy.init_node('puck_detector')
 
     # Instantiate the Detector object.
     detector = Detector()

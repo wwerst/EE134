@@ -19,24 +19,24 @@ def process_image(gray_im):
     params.maxThreshold = 200
 
     # Filter by Color
-    params.filterByColor = True
+    params.filterByColor = False
     params.filterByColor = 50
 
     # Filter by Area.
     params.filterByArea = True
-    params.minArea = 1400
-    params.maxArea = 1500
+    params.minArea = 1100
+    params.maxArea = 2000
 
     # Filter by Circularity
     params.filterByCircularity = True
-    params.minCircularity = 0.01
+    params.minCircularity = 0.85
 
     # Filter by Convexity
     params.filterByConvexity = True
     params.minConvexity = 0.87
         
     # Filter by Inertia
-    params.filterByInertia = True
+    params.filterByInertia = False
     params.minInertiaRatio = 0.001
 
     # Create a detector with the parameters
