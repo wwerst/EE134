@@ -12,7 +12,14 @@ import numpy as np
 
 
 def process_image(gray_im):
-    locate_aruco(gray_im)
+    corners = locate_aruco_corners(gray_im)
+    target_corners = np.float32(
+        [[800, 480],
+         [800, 0],
+         [0, 0],
+         [0, 480]])
+    persp_mat = cv2.getPerspectiveTransform(corners, target_corners)
+    gray_im = cv2.warpPerspective(gray_im, persp_mat, (800, 480))
 
     # Setup SimpleBlobDetector parameters.
     params = cv2.SimpleBlobDetector_Params()
@@ -28,15 +35,15 @@ def process_image(gray_im):
     # Filter by Area.
     params.filterByArea = True
     params.minArea = 2000
-    params.maxArea = 6000
+    params.maxArea = 4000
 
     # Filter by Circularity
     params.filterByCircularity = True
-    params.minCircularity = 0.85
+    params.minCircularity = 0.80
 
     # Filter by Convexity
     params.filterByConvexity = True
-    params.minConvexity = 0.87
+    params.minConvexity = 0.80
         
     # Filter by Inertia
     params.filterByInertia = False
@@ -59,9 +66,12 @@ def process_image(gray_im):
     return im_with_keypoints
 
 
-def locate_aruco(gray_im):
+def locate_aruco_corners(gray_im):
     marker_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
     corners, ids, _ = aruco.detectMarkers(
         gray_im,
         marker_dict)
-    print((corners, ids))
+    id_to_corner = {int(i): c for c, i in zip(corners, ids)}
+    ordered_corners = np.array([id_to_corner[i] for i in [1, 2, 3, 4]])
+    ordered_centers = np.average(ordered_corners, axis=2)
+    return ordered_centers
