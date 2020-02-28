@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+#
+#   gripper_controller.py
+#
+#   Node to control the gripper
+
+import rospy
+from threading import Lock
+from hockbot.gripper import Gripper
+from std_msgs.msg import Bool
+from std_srvs import SetBool
+
+class GripperController(object):
+    '''
+    ROS node that controls the gripper
+    '''
+
+    def __init__(self):
+        self._gripper_commander = Gripper()
+        self._grip_cmd = Bool
+        self._grip_cmd.data = False
+        self._grip_cmd_lock = Lock()
+        self._grip_srv = rospy.Service(
+            '~/set_gripper',
+            SetBool,
+            self._set_grip_cb)
+        self._grip_cmd_pub = rospy.Publisher(
+            '/picker/gripper/feedback/bool',
+            Bool,
+            queue_size=1
+            )
+        self._grip_pub_cb = rospy.Timer(
+            rospy.Duration(0.1),
+            self._grip_fb_pub_cb)
+
+    def _set_grip_cb(self, req):
+        with self._grip_cmd_lock:
+            self._grip_cmd.data = req.data
+            cmd = req.data
+        if not (cmd is None):
+            if cmd:
+                return True, "Gripper on"
+            else:
+                return True, "Gripper off"
+
+    def _grip_fb_pub_cb(self):
+        with self._grip_cmd_lock:
+            self._grip_cmd_pub.publish(self._grip_cmd)
+            cmd = self._grip_cmd.data
+        if not (cmd is None):
+            if cmd:
+                self._gripper_commander.on()
+            else:
+                self._gripper_commander.off()
+
+
+def main():
+    rospy.init_node('gripper_controller')
+    controller = GripperController()
+    rospy.spin()
+
+
+if __name__ == '__main__':
+    main()
