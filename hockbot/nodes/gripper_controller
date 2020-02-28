@@ -8,7 +8,7 @@ import rospy
 from threading import Lock
 from hockbot.gripper import Gripper
 from std_msgs.msg import Bool
-from std_srvs import SetBool
+from std_srvs.srv import SetBool
 
 class GripperController(object):
     '''
@@ -17,7 +17,7 @@ class GripperController(object):
 
     def __init__(self):
         self._gripper_commander = Gripper()
-        self._grip_cmd = Bool
+        self._grip_cmd = Bool()
         self._grip_cmd.data = False
         self._grip_cmd_lock = Lock()
         self._grip_srv = rospy.Service(
@@ -43,7 +43,7 @@ class GripperController(object):
             else:
                 return True, "Gripper off"
 
-    def _grip_fb_pub_cb(self):
+    def _grip_fb_pub_cb(self, _):
         with self._grip_cmd_lock:
             self._grip_cmd_pub.publish(self._grip_cmd)
             cmd = self._grip_cmd.data
