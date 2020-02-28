@@ -15,7 +15,7 @@
   <joint name="connect-world-q0minus" type="fixed">
     <parent link="world"/>
     <child  link="q0minus"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <origin xyz="0.295 0 0" rpy="0 0 0"/>
   </joint>
   <link name="q0minus"/>
 
@@ -31,7 +31,7 @@
   <joint name="connect-q0plus-q1minus" type="fixed">
     <parent link="q0plus"/>
     <child  link="q1minus"/>
-    <origin xyz="0 0 0.085" rpy="0 -1.5707963267949 0"/>
+    <origin xyz="0 0 0.091" rpy="0 -1.5707963267949 0"/>
   </joint>
   <link name="q1minus"/>
 
