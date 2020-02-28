@@ -7,9 +7,12 @@
 #
 # computer_vision.py
 import cv2
+import cv2.aruco as aruco
 import numpy as np
 
+
 def process_image(gray_im):
+    locate_aruco(gray_im)
 
     # Setup SimpleBlobDetector parameters.
     params = cv2.SimpleBlobDetector_Params()
@@ -24,8 +27,8 @@ def process_image(gray_im):
 
     # Filter by Area.
     params.filterByArea = True
-    params.minArea = 1100
-    params.maxArea = 2000
+    params.minArea = 2000
+    params.maxArea = 6000
 
     # Filter by Circularity
     params.filterByCircularity = True
@@ -55,3 +58,10 @@ def process_image(gray_im):
     # Show blobs
     return im_with_keypoints
 
+
+def locate_aruco(gray_im):
+    marker_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
+    corners, ids, _ = aruco.detectMarkers(
+        gray_im,
+        marker_dict)
+    print((corners, ids))
