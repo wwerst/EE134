@@ -10,6 +10,7 @@ from hockbot.gripper import Gripper
 from std_msgs.msg import Bool
 from std_srvs.srv import SetBool
 
+
 class GripperController(object):
     '''
     ROS node that controls the gripper

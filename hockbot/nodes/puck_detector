@@ -14,7 +14,10 @@
 # ROS Imports
 import rospy
 import sensor_msgs.msg
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import (
+    Point,
+    PointStamped,
+)
 import cv2
 import cv_bridge
 import numpy as np
@@ -65,11 +68,17 @@ class Detector:
         gray = cv2.cvtColor(cvImage, cv2.COLOR_BGR2GRAY)
 
         # Run the detector.
-        objects = process_image(gray)
+        image, center_points = process_image(gray)
+        if image is None:
+            return
 
+        for p in center_points:
+            point = Point(x=p[0], y=p[1], z=0)
+            self.point_publisher.publish(
+                PointStamped(point=point))
         # Convert back into a ROS image and republish (for debugging).
         self.publisher.publish(
-            self.bridge.cv2_to_imgmsg(objects, "bgr8"))
+            self.bridge.cv2_to_imgmsg(image, "bgr8"))
 
 
 #

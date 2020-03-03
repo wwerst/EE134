@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+
+import rospy
+from sensor_msgs.msg import JointState
+
+import actionlib
+from std_srvs.srv import SetBool
+from hockbot.srv import (
+    MovePickerCart,
+)
+from geometry_msgs.msg import (
+    Point,
+    PointStamped,
+)
+
+
+def main():
+    rospy.init_node('test_picker_motion')
+    picker_move_service_name = '/move_picker_cart'
+    set_gripper_name = '/set_gripper'
+    rospy.wait_for_service(picker_move_service_name)
+    rospy.wait_for_service(set_gripper_name)
+    move_point = rospy.wait_for_message("/detector/strikers", PointStamped).point
+    print('Moving to {}'.format(move_point))
+    move_picker = rospy.ServiceProxy(picker_move_service_name, MovePickerCart)
+    set_gripper = rospy.ServiceProxy(set_gripper_name, SetBool)
+    move_picker(
+        x=0.3,
+        y=0.3,
+        z=0.15,
+        tool_vertical=True,
+        cartesian_interp=True,
+        move_time=1.0)
+    move_picker(
+        x=move_point.x,
+        y=move_point.y,
+        z=0.10,
+        tool_vertical=True,
+        cartesian_interp=True,
+        move_time=1.5)
+    move_picker(
+        x=move_point.x,
+        y=move_point.y,
+        z=0.02,
+        tool_vertical=True,
+        cartesian_interp=True,
+        move_time=1.5)
+    set_gripper(True)
+    move_picker(
+        x=move_point.x,
+        y=move_point.y,
+        z=0.10,
+        tool_vertical=True,
+        cartesian_interp=True,
+        move_time=1.5)
+    move_picker(
+        x=0.3,
+        y=0.3,
+        z=0.15,
+        tool_vertical=True,
+        cartesian_interp=True,
+        move_time=1.5)
+    set_gripper(False)
+
+
+if __name__ == '__main__':
+    main()
