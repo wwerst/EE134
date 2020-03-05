@@ -4,7 +4,7 @@ import numpy as np
 import rospy
 from hockbot.msg import PointArray
 from hockbot.msg import PositionVelocityStamped
-from hockbot import PuckDynamics
+from hockbot.puck_dynamics import PuckDynamics
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import Vector3Stamped
 
@@ -22,9 +22,11 @@ class PuckPredicter(object):
             PositionVelocityStamped,
             queue_size=1)
 
-        self._time = rospy.wait_for_message(
+        self._time_ref = rospy.wait_for_message(
             '/detector/puck',
-            PointStamped).header.stamp.sec
+            PointStamped).header.stamp
+
+        self._dynamics = PuckDynamics(self._time_ref)
 
         self._puck_sub = rospy.Subscriber(
             '/detector/puck',
@@ -32,7 +34,6 @@ class PuckPredicter(object):
             self._puck_sub_cb
             )
 
-        self._dynamics = PuckDynamics()
         self._timer_cb = rospy.Timer(
             rospy.Duration(0.1),
             self._pub_traj)
@@ -41,8 +42,8 @@ class PuckPredicter(object):
         '''
         Puck position receive callback. Immediately publish position and velocity of puck
         '''
-        self._dyamics.add_point(msg)
-        self._time = msg.header.stamp.sec
+        self._time = (msg.header.stamp - self._time_ref).to_sec()
+        self._dynamics.add_point(msg)
         posvel = PositionVelocityStamped()
         posvel.header = msg.header
         posvel.position.x = self._dynamics.position[0]
@@ -54,7 +55,7 @@ class PuckPredicter(object):
 
     def _pub_traj(self, _):
         point_array = PointArray()
-        point_array.points = [self._dynamics.predict_position(t) for t in np.linspace(self._time, self._time+1, num=10)]
+        point_array.points = [self._dynamics.predict_position(t) for t in np.linspace(self._time, self._time+1.0, num=10)]
         self._traj_publisher.publish(point_array)
 
 def main():
