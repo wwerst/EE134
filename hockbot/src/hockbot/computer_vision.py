@@ -28,35 +28,33 @@ def process_image(gray_im):
          [0, rect_image_width]])
     persp_mat = cv2.getPerspectiveTransform(corners, target_corners)
     gray_im = cv2.warpPerspective(gray_im, persp_mat, (rect_image_length, rect_image_width))
-    print(gray_im.shape)
+    cv2.imshow('frame', gray_im)
+    cv2.waitKey(1)
 
     # Setup SimpleBlobDetector parameters.
     params = cv2.SimpleBlobDetector_Params()
 
     # Change thresholds
-    params.minThreshold = 10
-    params.maxThreshold = 200
-
-    # Filter by Color
-    params.filterByColor = False
-    params.filterByColor = 50
+    params.thresholdStep = 10
+    params.minThreshold = 20
+    params.maxThreshold = 60
 
     # Filter by Area.
     params.filterByArea = True
-    params.minArea = 100
-    params.maxArea = 40000
+    params.minArea = 300
+    params.maxArea = 1500
 
     # Filter by Circularity
     params.filterByCircularity = True
-    params.minCircularity = 0.6
+    params.minCircularity = 0.5
 
     # Filter by Convexity
     params.filterByConvexity = True
-    params.minConvexity = 0.80
+    params.minConvexity = 0.5
 
     # Filter by Inertia
-    params.filterByInertia = False
-    params.minInertiaRatio = 0.001
+    params.filterByInertia = True
+    params.minInertiaRatio = 0.5
 
     # Create a detector with the parameters
     detector = cv2.SimpleBlobDetector_create(params)
@@ -64,11 +62,11 @@ def process_image(gray_im):
     # Detect blobs.
     keypoints = detector.detect(gray_im)
     if not keypoints:
-        return gray_im, None
+        return cv2.cvtColor(gray_im, cv2.COLOR_GRAY2BGR), None
     center_points = [np.array(k.pt) for k in keypoints]
     transform = np.array(
-            [[0, 1.255/1024],
-             [1.352/1280, 0]])
+            [[TABLE_WIDTH/rect_image_length, 0],
+             [0, TABLE_LENGTH/rect_image_width]])
     center_points_metric = np.dot(center_points, transform)
 
     # Draw detected blobs as red circles.

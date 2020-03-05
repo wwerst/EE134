@@ -11,6 +11,8 @@
 #   Services:       none
 #
 
+from threading import Lock
+
 # ROS Imports
 import rospy
 import sensor_msgs.msg
@@ -46,6 +48,7 @@ class Detector:
                          sensor_msgs.msg.Image,
                          self.process,
                          queue_size=1)
+        self._lock = Lock()
 
         # Publish to the output topic.
         self.publisher = rospy.Publisher('~/puck_detector_image',
@@ -58,23 +61,27 @@ class Detector:
 
     def process(self, rosImage):
         # Convert into OpenCV image.
-        cvImage = self.bridge.imgmsg_to_cv2(rosImage)
+        locked = self._lock.acquire(False)
+        if locked:
+            try:
+                cvImage = self.bridge.imgmsg_to_cv2(rosImage)
+                # Run the detector.
+                image, center_points = process_image(cvImage)
+                if image is None:
+                    image = cv2.cvtColor(cvImage, cv2.COLOR_GRAY2BGR)
+                    return
+                if center_points is None:
+                    center_points = []
 
-        # Run the detector.
-        image, center_points = process_image(cvImage)
-        if image is None:
-            image = cv2.cvtColor(cvImage, cv2.COLOR_GRAY2BGR)
-            return
-        if center_points is None:
-            center_points = []
-
-        for p in center_points:
-            point = Point(x=p[0], y=p[1], z=0)
-            self.point_publisher.publish(
-                PointStamped(point=point))
-        # Convert back into a ROS image and republish (for debugging).
-        self.publisher.publish(
-            self.bridge.cv2_to_imgmsg(image, 'rgb8'))
+                for p in center_points:
+                    point = Point(x=p[0], y=p[1], z=0)
+                    self.point_publisher.publish(
+                        PointStamped(point=point))
+                # Convert back into a ROS image and republish (for debugging).
+                self.publisher.publish(
+                    self.bridge.cv2_to_imgmsg(image, 'rgb8'))
+            finally:
+                self._lock.release()
 
 
 #

@@ -36,7 +36,6 @@ def main(camera_name='ximea_camera'):
         '/{}/camera_info'.format(camera_name),
         CameraInfo,
         queue_size=1)
-    rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         cam.get_image(img)
         cv_img = img.get_image_data_numpy()
@@ -51,7 +50,6 @@ def main(camera_name='ximea_camera'):
             info_pub.publish(cam_info_msg)
         except CameraInfoMissingError:
             pass
-        rate.sleep()
     cam.stop_acquisition()
     cam.close_device()
 
