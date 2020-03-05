@@ -11,7 +11,7 @@
 #   Services:       none
 #
 
-from threading import Lock
+from threading import Lock, Semaphore
 
 # ROS Imports
 import rospy
@@ -46,8 +46,10 @@ class Detector:
         # subscriber callback.
         rospy.Subscriber(input_topic,
                          sensor_msgs.msg.Image,
-                         self.process,
+                         self._recv_image,
                          queue_size=1)
+        self._latest_img = None
+        self._new_img = False
         self._lock = Lock()
 
         # Publish to the output topic.
@@ -58,30 +60,41 @@ class Detector:
         self.point_publisher = rospy.Publisher(point_output_topic,
                                                 PointStamped,
                                                 queue_size=1)
+        num_threads = 1
+        self.img_process_timers = [rospy.Timer(rospy.Duration(0.01),
+            self.cb_timer) for i in range(num_threads)]
+
+    def _recv_image(self, image):
+        with self._lock:
+            self._latest_img = image
+            self._new_img = True
+
+    def cb_timer(self, _):
+        img = None
+        with self._lock:
+            if self._new_img:
+                img = self._latest_img
+                self._new_img = False
+        if img:
+            self.process(img)
 
     def process(self, rosImage):
-        # Convert into OpenCV image.
-        locked = self._lock.acquire(False)
-        if locked:
-            try:
-                cvImage = self.bridge.imgmsg_to_cv2(rosImage)
-                # Run the detector.
-                image, center_points = process_image(cvImage)
-                if image is None:
-                    image = cv2.cvtColor(cvImage, cv2.COLOR_GRAY2BGR)
-                    return
-                if center_points is None:
-                    center_points = []
+        cvImage = self.bridge.imgmsg_to_cv2(rosImage)
+        # Run the detector.
+        image, center_points = process_image(cvImage)
+        if image is None:
+            image = cv2.cvtColor(cvImage, cv2.COLOR_GRAY2BGR)
+            return
+        if center_points is None:
+            center_points = []
 
-                for p in center_points:
-                    point = Point(x=p[0], y=p[1], z=0)
-                    self.point_publisher.publish(
-                        PointStamped(point=point))
-                # Convert back into a ROS image and republish (for debugging).
-                self.publisher.publish(
-                    self.bridge.cv2_to_imgmsg(image, 'rgb8'))
-            finally:
-                self._lock.release()
+        for p in center_points:
+            point = Point(x=p[0], y=p[1], z=0)
+            self.point_publisher.publish(
+                PointStamped(point=point))
+        # Convert back into a ROS image and republish (for debugging).
+        self.publisher.publish(
+            self.bridge.cv2_to_imgmsg(image, 'rgb8'))
 
 
 #

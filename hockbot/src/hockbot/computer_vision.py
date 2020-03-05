@@ -12,7 +12,7 @@ import numpy as np
 
 TABLE_WIDTH = 1.697
 TABLE_LENGTH = 1.255
-RECT_IMAGE_SIZE = 640
+RECT_IMAGE_SIZE = 240
 
 
 def process_image(gray_im):
@@ -28,33 +28,31 @@ def process_image(gray_im):
          [0, rect_image_width]])
     persp_mat = cv2.getPerspectiveTransform(corners, target_corners)
     gray_im = cv2.warpPerspective(gray_im, persp_mat, (rect_image_length, rect_image_width))
-    cv2.imshow('frame', gray_im)
-    cv2.waitKey(1)
 
     # Setup SimpleBlobDetector parameters.
     params = cv2.SimpleBlobDetector_Params()
 
     # Change thresholds
-    params.thresholdStep = 10
-    params.minThreshold = 20
-    params.maxThreshold = 60
+    params.thresholdStep = 5
+    params.minThreshold = 10
+    params.maxThreshold = 100
 
     # Filter by Area.
     params.filterByArea = True
-    params.minArea = 300
-    params.maxArea = 1500
+    params.minArea = 40 # 75
+    params.maxArea = 140 # 250
 
     # Filter by Circularity
     params.filterByCircularity = True
-    params.minCircularity = 0.5
+    params.minCircularity = 0.8
 
     # Filter by Convexity
     params.filterByConvexity = True
-    params.minConvexity = 0.5
+    params.minConvexity = 0.9
 
     # Filter by Inertia
     params.filterByInertia = True
-    params.minInertiaRatio = 0.5
+    params.minInertiaRatio = 0.8
 
     # Create a detector with the parameters
     detector = cv2.SimpleBlobDetector_create(params)
