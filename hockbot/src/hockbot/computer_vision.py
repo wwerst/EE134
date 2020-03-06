@@ -13,7 +13,6 @@ import numpy as np
 
 TABLE_WIDTH = 1.697
 TABLE_LENGTH = 1.255
-EXTENDED_TABLE_LENGTH = 1.0
 RECT_IMAGE_SIZE = 240
 
 
@@ -29,15 +28,13 @@ class PuckDetector(object):
             return None, None
         rect_image_width = int(RECT_IMAGE_SIZE/TABLE_WIDTH)
         rect_image_length = int(RECT_IMAGE_SIZE/TABLE_LENGTH)
-        rect_image_extended_length = int(RECT_IMAGE_SIZE/EXTENDED_TABLE_LENGTH)
-        # rect_image_extended_pixels = int(RECT_IMAGE_SIZE*TABLE_WIDTH/EXTENDED_TABLE_LENGTH)
         target_corners = np.float32(
             [[0, 0],
              [rect_image_length, 0],
              [rect_image_length, rect_image_width],
              [0, rect_image_width]])
         persp_mat = cv2.getPerspectiveTransform(corners, target_corners)
-        gray_im = cv2.warpPerspective(gray_im, persp_mat, (rect_image_length, rect_image_extended_length))
+        gray_im = cv2.warpPerspective(gray_im, persp_mat, (rect_image_length, rect_image_width))
 
         # Setup SimpleBlobDetector parameters.
         params = cv2.SimpleBlobDetector_Params()
@@ -73,7 +70,7 @@ class PuckDetector(object):
             return cv2.cvtColor(gray_im, cv2.COLOR_GRAY2BGR), None
         center_points = [np.array(k.pt) for k in keypoints]
         transform = np.array(
-                [[EXTENDED_TABLE_LENGTH/rect_image_extended_length, 0],
+                [[TABLE_WIDTH/rect_image_length, 0],
                  [0, TABLE_LENGTH/rect_image_width]])
         center_points_metric = np.dot(center_points, transform)
 

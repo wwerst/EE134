@@ -15,7 +15,7 @@ class PuckDynamics(object):
         '''
         Initialize the puck dynamics object with constants for the environment
         '''
-        self.NUM_POINTS = 5 # Number of points to fit
+        self.NUM_POINTS = 10 # Number of points to fit
         self.TABLE_LEFT = 0.0 # x Position of table left edge, meters
         self.TABLE_RIGHT = 1000.0 # x Position of the table right edge, meters
         self.TABLE_BOTTOM = 0.0 # y Position of table bottom edge, meters
@@ -50,7 +50,6 @@ class PuckDynamics(object):
         x = point_stamped.point.x
         y = point_stamped.point.y
         t = (point_stamped.header.stamp - self.time_ref).to_sec()
-        print(t)
 
         # Keep track of number of valid points
         self.num_valid_points += 1
@@ -65,15 +64,14 @@ class PuckDynamics(object):
         np.put(self.x_arr, self.NUM_POINTS-1, x)
         np.put(self.y_arr, self.NUM_POINTS-1, y)
 
-        print(self.t_arr)
-        print(self.x_arr)
-        print(self.y_arr)
-        print('')
-
         # Recompute the regression
         if (self.num_valid_points >= self.NUM_POINTS):
-            self.x_coeffs = np.polyfit(self.t_arr, self.x_arr, 2)
-            self.y_coeffs = np.polyfit(self.t_arr, self.y_arr, 2)
+            x_coeffs = np.polyfit(self.t_arr, self.x_arr, 2, full=True)
+            y_coeffs = np.polyfit(self.t_arr, self.y_arr, 2, full=True)
+            if x_coeffs[1][0] <= 0.01:
+                self.x_coeffs = x_coeffs[0]
+            if y_coeffs[1][0] <= 0.01:
+                self.y_coeffs = y_coeffs[0]
 
         # Fill in present position and velocity
         self.position = np.array([x, y])
@@ -101,36 +99,39 @@ class PuckDynamics(object):
         '''
 
         # Account for no reverse direction due to slowdown. Assumes vertex is always in future
-        if t >= (-1.0 * self.x_coeffs[1])/(2.0 * self.x_coeffs[0]):
-            x = np.polyval(self.x_coeffs, (-1.0 * self.x_coeffs[1])/(2.0 * self.x_coeffs[0]))
-        else:
-            x = np.polyval(self.x_coeffs, t)
+#        if t >= (-1.0 * self.x_coeffs[1])/(2.0 * self.x_coeffs[0]):
+#            x = np.polyval(self.x_coeffs, (-1.0 * self.x_coeffs[1])/(2.0 * self.x_coeffs[0]))
+#        else:
+#            x = np.polyval(self.x_coeffs, t)
+#
+#        if t >= (-1.0 * self.y_coeffs[1])/(2.0 * self.y_coeffs[0]):
+#            y = np.polyval(self.y_coeffs, (-1.0 * self.y_coeffs[1])/(2.0 * self.y_coeffs[0]))
+#        else:
+#            y = np.polyval(self.y_coeffs, t)
+#
+#        # Account for hitting walls, reflect with some elasticity coefficient
+#        if x < self.TABLE_LEFT + self.PUCK_RADIUS:
+#            x = (self.TABLE_LEFT + ((self.TABLE_LEFT - (x - self.PUCK_RADIUS)) * self.ELASTICITY) 
+#            + self.PUCK_RADIUS)
+#        elif x > self.TABLE_RIGHT - self.PUCK_RADIUS:
+#            x = (self.TABLE_RIGHT - ((x + self.PUCK_RADIUS - self.TABLE_RIGHT) * self.ELASTICITY) 
+#            - self.PUCK_RADIUS)
+#
+#        if y < self.TABLE_BOTTOM + self.PUCK_RADIUS:
+#            y = (self.TABLE_BOTTOM + ((self.TABLE_BOTTOM - (y - self.PUCK_RADIUS)) * self.ELASTICITY) 
+#            + self.PUCK_RADIUS)
+#        elif y > self.TABLE_TOP - self.PUCK_RADIUS:
+#            y = (self.TABLE_TOP - ((y + self.PUCK_RADIUS - self.TABLE_TOP) * self.ELASTICITY) 
+#            - self.PUCK_RADIUS)
 
-        if t >= (-1.0 * self.y_coeffs[1])/(2.0 * self.y_coeffs[0]):
-            y = np.polyval(self.y_coeffs, (-1.0 * self.y_coeffs[1])/(2.0 * self.y_coeffs[0]))
-        else:
-            y = np.polyval(self.y_coeffs, t)
-
-        # Account for hitting walls, reflect with some elasticity coefficient
-        if x < self.TABLE_LEFT + self.PUCK_RADIUS:
-            x = (self.TABLE_LEFT + ((self.TABLE_LEFT - (x - self.PUCK_RADIUS)) * self.ELASTICITY) 
-            + self.PUCK_RADIUS)
-        elif x > self.TABLE_RIGHT - self.PUCK_RADIUS:
-            x = (self.TABLE_RIGHT - ((x + self.PUCK_RADIUS - self.TABLE_RIGHT) * self.ELASTICITY) 
-            - self.PUCK_RADIUS)
-
-        if y < self.TABLE_BOTTOM + self.PUCK_RADIUS:
-            y = (self.TABLE_BOTTOM + ((self.TABLE_BOTTOM - (y - self.PUCK_RADIUS)) * self.ELASTICITY) 
-            + self.PUCK_RADIUS)
-        elif y > self.TABLE_TOP - self.PUCK_RADIUS:
-            y = (self.TABLE_TOP - ((y + self.PUCK_RADIUS - self.TABLE_TOP) * self.ELASTICITY) 
-            - self.PUCK_RADIUS)
+        x = np.polyval(self.x_coeffs, t)
+        y = np.polyval(self.y_coeffs, t)
 
         retPoint = Point()
         if (self.num_valid_points >= self.NUM_POINTS):
             retPoint.x = x
             retPoint.y = y
         else:
-            retPoint.x = 0.0
-            retPoint.y = 0.0
+            retPoint.x = self.position[0]
+            retPoint.y = self.position[1]
         return retPoint
