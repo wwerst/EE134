@@ -60,6 +60,11 @@ class PuckPredicter(object):
         '''
         Puck position receive callback. Immediately publish position and velocity of puck
         '''
+        data_time = (point_stamped.header.stamp - self._time_ref).to_sec()
+        if data_time < self._time:
+            """Ignore data from the past."""
+            rospy.logwarn('Received out of order data')
+            return
         self._time = (point_stamped.header.stamp - self._time_ref).to_sec()
         self._dynamics.add_point(point_stamped)
         posvel = PositionVelocityStamped()
