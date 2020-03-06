@@ -11,9 +11,10 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 
-TABLE_WIDTH = 1.697
-TABLE_LENGTH = 1.255
-RECT_IMAGE_SIZE = 240
+MARKER_WIDTH = 1.697
+MARKER_LENGTH = 1.255
+EXTENDED_TABLE_LENGTH = 1.8
+PIXELS_PER_METER = 100.0
 
 
 class PuckDetector(object):
@@ -26,15 +27,19 @@ class PuckDetector(object):
         corners = self.locate_aruco_corners(gray_im)
         if corners is None:
             return None, None
-        rect_image_width = int(RECT_IMAGE_SIZE/TABLE_WIDTH)
-        rect_image_length = int(RECT_IMAGE_SIZE/TABLE_LENGTH)
+        marker_image_width = MARKER_WIDTH*PIXELS_PER_METER
+        marker_image_length = MARKER_LENGTH*PIXELS_PER_METER
+        extended_image_length = EXTENDED_TABLE_LENGTH*PIXELS_PER_METER
+        marker_image_width_pix = int(marker_image_width)
+        marker_image_length_pix = int(marker_image_length)
+        extended_image_length_pix = int(extended_image_length)
         target_corners = np.float32(
             [[0, 0],
-             [rect_image_length, 0],
-             [rect_image_length, rect_image_width],
-             [0, rect_image_width]])
+             [marker_image_width, 0],
+             [marker_image_width, marker_image_length],
+             [0, marker_image_length]])
         persp_mat = cv2.getPerspectiveTransform(corners, target_corners)
-        gray_im = cv2.warpPerspective(gray_im, persp_mat, (rect_image_length, rect_image_width))
+        gray_im = cv2.warpPerspective(gray_im, persp_mat, (marker_image_width_pix, extended_image_length_pix))
 
         # Setup SimpleBlobDetector parameters.
         params = cv2.SimpleBlobDetector_Params()
@@ -70,8 +75,8 @@ class PuckDetector(object):
             return cv2.cvtColor(gray_im, cv2.COLOR_GRAY2BGR), None
         center_points = [np.array(k.pt) for k in keypoints]
         transform = np.array(
-                [[TABLE_WIDTH/rect_image_length, 0],
-                 [0, TABLE_LENGTH/rect_image_width]])
+                [[1/PIXELS_PER_METER, 0],
+                 [0, 1/PIXELS_PER_METER]])
         center_points_metric = np.dot(center_points, transform)
 
         # Draw detected blobs as red circles.

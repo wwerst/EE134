@@ -3,6 +3,7 @@
 #   puck_dynamics.py
 
 import numpy as np
+from numpy.polynomial.polynomial import Polynomial
 import shapely.geometry as sp_geom
 
 import rospy
@@ -69,32 +70,37 @@ class PuckDynamics(object):
 
         # Recompute the regression
         if (self.num_valid_points >= self.NUM_POINTS):
-            x_coeffs = np.polyfit(self.t_arr, self.x_arr, 2, full=True)
-            y_coeffs = np.polyfit(self.t_arr, self.y_arr, 2, full=True)
+            x_coeffs = Polynomial.fit(self.t_arr, self.x_arr, 2, full=True)
+            y_coeffs = Polynomial.fit(self.t_arr, self.y_arr, 2, full=True)
             if x_coeffs[1][0] <= 0.01:
-                self.x_coeffs = x_coeffs[0]
+                self.x_coeffs = x_coeffs[0].convert().coef
             if y_coeffs[1][0] <= 0.01:
-                self.y_coeffs = y_coeffs[0]
+                self.y_coeffs = y_coeffs[0].convert().coef
 
         # Fill in present position and velocity
         self.position = np.array([x, y])
-        if self.num_valid_points >= 3:
-            vx = 0.5 * (
+        if self.num_valid_points >= self.NUM_POINTS:
+            # vx = np.polyval(np.array([2*self.x_coeffs[0], self.x_coeffs[1]]), self.t_arr[-1])
+            # vy = np.polyval(np.array([2*self.y_coeffs[0], self.y_coeffs[1]]), self.t_arr[-1])
+            time_constant = 0.1
+            self.velocity[0] *= (1-time_constant)
+            self.velocity[0] += time_constant * 0.5 * (
                     ((self.x_arr[self.NUM_POINTS-1] - self.x_arr[self.NUM_POINTS-2]) / 
                     (self.t_arr[self.NUM_POINTS-1] - self.t_arr[self.NUM_POINTS-2])) + 
                     ((self.x_arr[self.NUM_POINTS-2] - self.x_arr[self.NUM_POINTS-3]) / 
                     (self.t_arr[self.NUM_POINTS-2] - self.t_arr[self.NUM_POINTS-3])) 
                     )
-            vy = 0.5 * (
+            self.velocity[1] *= (1-time_constant)
+            self.velocity[1] += time_constant * 0.5 * (
                     ((self.y_arr[self.NUM_POINTS-1] - self.y_arr[self.NUM_POINTS-2]) / 
                     (self.t_arr[self.NUM_POINTS-1] - self.t_arr[self.NUM_POINTS-2])) + 
                     ((self.y_arr[self.NUM_POINTS-2] - self.y_arr[self.NUM_POINTS-3]) / 
                     (self.t_arr[self.NUM_POINTS-2] - self.t_arr[self.NUM_POINTS-3]))
                     )
         else:
-            vx = 0.0
-            vy = 0.0
-        self.velocity = np.array([vx, vy])
+            self.velocity = np.zeros(2)
+        self.x_coeffs = np.array([self.velocity[0], self.position[0] - self.velocity[0]*self.t_arr[-1]])
+        self.y_coeffs = np.array([self.velocity[1], self.position[1] - self.velocity[1]*self.t_arr[-1]])
 
     def predict_position(self, t):
         '''
