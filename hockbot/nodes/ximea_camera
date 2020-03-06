@@ -36,7 +36,10 @@ def main(camera_name='ximea_camera'):
         '/{}/camera_info'.format(camera_name),
         CameraInfo,
         queue_size=1)
+    max_framerate = rospy.get_param('~max_framerate')
+    rate = rospy.Rate(rospy.Duration(max_framerate))
     while not rospy.is_shutdown():
+        rate.sleep()
         cam.get_image(img)
         cv_img = img.get_image_data_numpy()
         cap_time = rospy.Time.now()
