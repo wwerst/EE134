@@ -11,10 +11,10 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 
-MARKER_WIDTH = 1.697
-MARKER_LENGTH = 1.255
-EXTENDED_TABLE_LENGTH = 1.8
-PIXELS_PER_METER = 100.0
+MARKER_WIDTH = 1.354
+MARKER_LENGTH = 1.0
+EXTENDED_TABLE_LENGTH = 1.4
+PIXELS_PER_METER = 200.0
 
 
 class PuckDetector(object):
@@ -51,8 +51,8 @@ class PuckDetector(object):
 
         # Filter by Area.
         params.filterByArea = True
-        params.minArea = 40 # 75
-        params.maxArea = 140 # 250
+        params.minArea = 150
+        params.maxArea = 500
 
         # Filter by Circularity
         params.filterByCircularity = True
@@ -75,8 +75,8 @@ class PuckDetector(object):
             return cv2.cvtColor(gray_im, cv2.COLOR_GRAY2BGR), None
         center_points = [np.array(k.pt) for k in keypoints]
         transform = np.array(
-                [[1/PIXELS_PER_METER, 0],
-                 [0, 1/PIXELS_PER_METER]])
+                [[1.0/PIXELS_PER_METER, 0],
+                 [0, 1.0/PIXELS_PER_METER]])
         center_points_metric = np.dot(center_points, transform)
 
         # Draw detected blobs as red circles.

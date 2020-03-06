@@ -12,7 +12,7 @@ from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import Vector3Stamped
 from sensor_msgs.msg import Image
 
-PIXELS_PER_METER = 100.0
+PIXELS_PER_METER = 200.0
 
 
 class PuckPredicter(object):

@@ -2,12 +2,14 @@
 import numpy as np
 from threading import Lock
 
+import cv2
+import cv_bridge
 import rospy
 from hockbot.srv import (
     MoveCart,
     MoveJoint,
 )
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import JointState, Image
 
 import actionlib
 from hebiros.msg import (
@@ -45,11 +47,11 @@ class ScaraController(object):
         #     MoveJoint,
         #     self._move_joint_cb
         #     )
-        # self._cart_srv = rospy.Service(
-        #     '~/move_cart',
-        #     MoveCart,
-        #     self._move_cart_implicit_cb
-        #     )
+        self._cart_srv = rospy.Service(
+            '~/move_cart',
+            MoveCart,
+            self._move_cart_implicit_cb
+            )
         self._lock = Lock()
         self._dt = 0.01
         self._last_defense_move = rospy.Time.now().to_sec()
@@ -58,30 +60,58 @@ class ScaraController(object):
         self._cur_acc = np.array([0., 0.])
         self._cur_vel = np.array([0., 0.])
         self._cmd_pos = None
-        self._control_loop = rospy.Timer(
-            rospy.Duration(self._dt),
-            self._control_loop_cb)
         self._puck_vec_sub = rospy.Subscriber(
             '/puck_predicter/positionvelocity',
             PositionVelocityStamped,
             self._puck_vec_cb)
+        self._bridge = cv_bridge.CvBridge()
+        self._puck_im_sub = rospy.Subscriber(
+            '/puck_predicter/visualization/image',
+            Image,
+            self._image_render_cb
+            )
+        self._goal_img_publisher = rospy.Publisher(
+            '/scara_controller/visualization/image',
+            Image,
+            queue_size=1)
+        self._control_loop = rospy.Timer(
+            rospy.Duration(self._dt),
+            self._control_loop_cb)
+
+    def _image_render_cb(self, img):
+        PIXELS_PER_METER = 200.0
+        with self._lock:
+            cmd_pos = self._cmd_pos
+        if cmd_pos is None:
+            return
+        cvImage = self._bridge.imgmsg_to_cv2(img)
+        x = int(np.round((cmd_pos[0]*PIXELS_PER_METER)))
+        y = int(np.round((cmd_pos[1]*PIXELS_PER_METER)))
+        cv2.circle(cvImage, (x, y), 3, (0, 0, 255), -1)
+        #x = int(np.round((point_stamped.point.x/TABLE_WIDTH) * img.width))
+        #y = int(np.round((point_stamped.point.y/TABLE_LENGTH) * img.height))
+        #cv2.circle(cvImage, (x, y), 1, (0, 255, 0), -1)
+        self._goal_img_publisher.publish(self._bridge.cv2_to_imgmsg(cvImage, 'rgb8'))
 
     def _puck_vec_cb(self, msg):
         triangle_defense_poly = np.array(
-            [[0.435, 0.3],
+            [[0.335, 0.25],
              [0.665, 0.4],
-             [0.9, 0.3]])
+             [0.95, 0.25]])
         puck_pos = np.array([msg.position.x, msg.position.y])
         puck_vel = np.array([msg.velocity.x, msg.velocity.y])
         nearest_intersect = intersect_line_segment_polygon(
             np.array([puck_pos, puck_pos+puck_vel*1.0]),
             triangle_defense_poly)
-        with self._lock:
-            if nearest_intersect is not None:
-                self._cmd_pos = nearest_intersect
-                self._last_defense_move = rospy.Time.now().to_sec()
-            elif rospy.Time.now().to_sec() - self._last_defense_move > 1.0:
-                self._cmd_pos = triangle_defense_poly[1]
+        cmd_pos = None
+        if nearest_intersect is not None:
+            cmd_pos = nearest_intersect
+            self._last_defense_move = rospy.Time.now().to_sec()
+        elif rospy.Time.now().to_sec() - self._last_defense_move > 1.0:
+            cmd_pos = triangle_defense_poly[1]
+        if cmd_pos is not None:
+            with self._lock:
+                self._cmd_pos = cmd_pos
 
     def _move_cart_implicit_cb(self, msg):
         with self._lock:
@@ -101,19 +131,20 @@ class ScaraController(object):
         Kp = 160.0
         max_velocity = 1.5              # Velocity magnitude limit
         with self._lock:
-            # self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self._cmd_pos)
-            # self._cur_acc = limit_array(self._cur_acc, max_acc)
-            self._cur_vel = -(self._cur_pos - self._cmd_pos) * Kp # dt * self._cur_acc
-            # Apply velocity limits
-            self._cur_vel = limit_array(self._cur_vel, max_velocity)
+            cmd_pos = self._cmd_pos
+        # self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self._cmd_pos)
+        # self._cur_acc = limit_array(self._cur_acc, max_acc)
+        self._cur_vel = -(self._cur_pos - cmd_pos) * Kp # dt * self._cur_acc
+        # Apply velocity limits
+        self._cur_vel = limit_array(self._cur_vel, max_velocity)
 
-            self._cur_pos += dt * self._cur_vel
-            self._cur_jnt_angles = self._calculate_ikin_nearest(self._cur_pos, self._cur_jnt_angles)
-            self._cur_pos = fkin(*self._cur_jnt_angles)
-            command_msg.position = self._cur_jnt_angles
-            command_msg.velocity = np.array([0.0]*len(self._cur_pos)) # self._cur_vel
-            command_msg.effort = np.array([0.0]*len(self._cur_pos))
-            command_msg.header.stamp = rospy.Time.now()
+        self._cur_pos += dt * self._cur_vel
+        self._cur_jnt_angles = self._calculate_ikin_nearest(self._cur_pos, self._cur_jnt_angles)
+        self._cur_pos = fkin(*self._cur_jnt_angles)
+        command_msg.position = self._cur_jnt_angles
+        command_msg.velocity = np.array([0.0]*len(self._cur_pos)) # self._cur_vel
+        command_msg.effort = np.array([0.0]*len(self._cur_pos))
+        command_msg.header.stamp = rospy.Time.now()
         self._hebi_commander.publish(command_msg)
 
     def _move_cart_cb(self, req):

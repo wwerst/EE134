@@ -148,8 +148,8 @@ class PuckDynamics(object):
 
 def intersect_line_segment_polygon(line_segment, polygon):
     """Find the nearest intersection of the given vector with given polygon."""
-    sp_polygon = sp_geom.LineString(polygon)
     sp_line_seg = sp_geom.LineString(line_segment)
+    sp_polygon = sp_geom.LineString(polygon)
     start_point = sp_geom.Point(*line_segment[0])
     intersect_points = sp_polygon.intersection(sp_line_seg)
     min_point = None
