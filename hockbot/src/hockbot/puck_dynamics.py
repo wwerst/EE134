@@ -3,9 +3,12 @@
 #   puck_dynamics.py
 
 import numpy as np
+import shapely.geometry as sp_geom
+
 import rospy
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
+
 
 class PuckDynamics(object):
     '''
@@ -135,3 +138,18 @@ class PuckDynamics(object):
             retPoint.x = self.position[0]
             retPoint.y = self.position[1]
         return retPoint
+
+
+def intersect_line_segment_polygon(line_segment, polygon):
+    """Find the nearest intersection of the given vector with given polygon."""
+    sp_polygon = sp_geom.LineString(polygon)
+    sp_line_seg = sp_geom.LineString(line_segment)
+    start_point = sp_geom.Point(*line_segment[0])
+    intersect_points = sp_polygon.intersection(sp_line_seg)
+    min_point = None
+    for p in intersect_points:
+        if min_point is None or p.distance(start_point) < min_point.distance(start_point):
+            min_point = p
+    if min_point is None:
+        return None
+    return np.array(min_point)
