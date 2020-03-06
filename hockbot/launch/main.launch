@@ -10,7 +10,7 @@
   </node>
   <group ns="ximea_camera">
     <node name="ximea_camera" pkg="hockbot" type="ximea_camera">
-      <param name="max_framerate" default="50"/>
+      <param name="max_framerate" value="50"/>
     </node>
     <node name="image_proc" pkg="image_proc" type="image_proc"/>
   </group>

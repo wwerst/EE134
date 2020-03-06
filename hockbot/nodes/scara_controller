@@ -45,13 +45,14 @@ class ScaraController(object):
         #     MoveJoint,
         #     self._move_joint_cb
         #     )
-        self._cart_srv = rospy.Service(
-            '~/move_cart',
-            MoveCart,
-            self._move_cart_implicit_cb
-            )
+        # self._cart_srv = rospy.Service(
+        #     '~/move_cart',
+        #     MoveCart,
+        #     self._move_cart_implicit_cb
+        #     )
         self._lock = Lock()
         self._dt = 0.01
+        self._last_defense_move = rospy.Time.now().to_sec()
         self._last_time = rospy.Time.now().to_sec()
         self._cur_pos = fkin(*self._cur_jnt_angles)
         self._cur_acc = np.array([0., 0.])
@@ -60,16 +61,16 @@ class ScaraController(object):
         self._control_loop = rospy.Timer(
             rospy.Duration(self._dt),
             self._control_loop_cb)
-        # self._puck_vec_sub = rospy.Subscriber(
-        #     '/puck_predicter/positionvelocity',
-        #     PositionVelocityStamped,
-        #     self._puck_vec_cb)
+        self._puck_vec_sub = rospy.Subscriber(
+            '/puck_predicter/positionvelocity',
+            PositionVelocityStamped,
+            self._puck_vec_cb)
 
     def _puck_vec_cb(self, msg):
         triangle_defense_poly = np.array(
-            [[0.535, 0.3],
-             [0.665, 0.5],
-             [0.795, 0.3]])
+            [[0.435, 0.3],
+             [0.665, 0.4],
+             [0.9, 0.3]])
         puck_pos = np.array([msg.position.x, msg.position.y])
         puck_vel = np.array([msg.velocity.x, msg.velocity.y])
         nearest_intersect = intersect_line_segment_polygon(
@@ -78,7 +79,8 @@ class ScaraController(object):
         with self._lock:
             if nearest_intersect is not None:
                 self._cmd_pos = nearest_intersect
-            else:
+                self._last_defense_move = rospy.Time.now().to_sec()
+            elif rospy.Time.now().to_sec() - self._last_defense_move > 1.0:
                 self._cmd_pos = triangle_defense_poly[1]
 
     def _move_cart_implicit_cb(self, msg):
@@ -96,11 +98,12 @@ class ScaraController(object):
         lam = 1.0/time_constant   # Convergence rate
         damping = 0.7
         max_acc = 10000000.0
-        max_velocity = 1.2              # Velocity magnitude limit
+        Kp = 160.0
+        max_velocity = 1.5              # Velocity magnitude limit
         with self._lock:
-            self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self._cmd_pos)
-            self._cur_acc = limit_array(self._cur_acc, max_acc)
-            self._cur_vel += dt * self._cur_acc
+            # self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self._cmd_pos)
+            # self._cur_acc = limit_array(self._cur_acc, max_acc)
+            self._cur_vel = -(self._cur_pos - self._cmd_pos) * Kp # dt * self._cur_acc
             # Apply velocity limits
             self._cur_vel = limit_array(self._cur_vel, max_velocity)
 
