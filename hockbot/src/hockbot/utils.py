@@ -7,9 +7,9 @@ from sensor_msgs.msg import JointState
 def remap_joint_state(joint_state, desired_name_order):
     new_state = JointState()
     new_state.name = desired_name_order
-    new_state.position = [0]*5
-    new_state.velocity = [0]*5
-    new_state.effort = [0]*5
+    new_state.position = [0]*len(joint_state.position)
+    new_state.velocity = [0]*len(joint_state.position)
+    new_state.effort = [0]*len(joint_state.position)
     for i, name in enumerate(new_state.name):
         ordered_index = new_state.name.index(name)
         new_state.position[ordered_index] = joint_state.position[i]
@@ -127,3 +127,7 @@ def blocking_squarewave(pub, cmdmsg, joint, amplitude, period, gravity=None):
         servo.sleep()
 
 
+def limit_array(arr, limit):
+    arr = np.minimum(arr, np.array([limit]*len(arr)))
+    arr = np.maximum(arr, np.array([-limit]*len(arr)))
+    return arr

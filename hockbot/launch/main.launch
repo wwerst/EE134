@@ -1,6 +1,6 @@
 <launch>
   <arg name="use_picker" default="false"/>
-  <arg name="use_scara" default="false"/>
+  <arg name="use_scara" default="true"/>
   <arg name="use_camera" default="true"/>
   <arg name="camera_name" default="logitech_cam"/>
   <node name="logitech_cam" pkg="usb_cam" type="usb_cam_node">
@@ -15,6 +15,7 @@
   <node name="puck_detector" pkg="hockbot" type="puck_detector">
     <param name="image_topic" value="/ximea_camera/image_rect"/>
   </node>
+  <node name="puck_predicter" pkg="hockbot" type="puck_predicter"/>
   <node name="gripper_controller" pkg="hockbot" type="gripper_controller"/>
   <node name="hebiros_node" pkg="hebiros" type="hebiros_node" respawn="false" output="screen"/>
   <group if="$(arg use_picker)">

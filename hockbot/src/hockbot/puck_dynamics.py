@@ -147,6 +147,10 @@ def intersect_line_segment_polygon(line_segment, polygon):
     start_point = sp_geom.Point(*line_segment[0])
     intersect_points = sp_polygon.intersection(sp_line_seg)
     min_point = None
+    if isinstance(intersect_points, sp_geom.LineString):
+        return None
+    if isinstance(intersect_points, sp_geom.Point):
+        return np.array(intersect_points)
     for p in intersect_points:
         if min_point is None or p.distance(start_point) < min_point.distance(start_point):
             min_point = p

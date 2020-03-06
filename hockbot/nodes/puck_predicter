@@ -15,6 +15,7 @@ from sensor_msgs.msg import Image
 TABLE_WIDTH = 1.697
 TABLE_LENGTH = 1.255
 
+
 class PuckPredicter(object):
 
     def __init__(self):
