@@ -9,7 +9,9 @@
     <param name="image_height" value="720"/>
   </node>
   <group ns="ximea_camera">
-    <node name="ximea_camera" pkg="hockbot" type="ximea_camera"/>
+    <node name="ximea_camera" pkg="hockbot" type="ximea_camera">
+      <param name="max_framerate" default="50"/>
+    </node>
     <node name="image_proc" pkg="image_proc" type="image_proc"/>
   </group>
   <node name="puck_detector" pkg="hockbot" type="puck_detector">
