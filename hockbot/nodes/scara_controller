@@ -45,11 +45,11 @@ class ScaraController(object):
         #     MoveJoint,
         #     self._move_joint_cb
         #     )
-        # self._cart_srv = rospy.Service(
-        #     '~/move_cart',
-        #     MoveCart,
-        #     self._move_cart_cb
-        #     )
+        self._cart_srv = rospy.Service(
+            '~/move_cart',
+            MoveCart,
+            self._move_cart_implicit_cb
+            )
         self._lock = Lock()
         self._dt = 0.01
         self._last_time = rospy.Time.now().to_sec()
@@ -60,10 +60,10 @@ class ScaraController(object):
         self._control_loop = rospy.Timer(
             rospy.Duration(self._dt),
             self._control_loop_cb)
-        self._puck_vec_sub = rospy.Subscriber(
-            '/puck_predicter/positionvelocity',
-            PositionVelocityStamped,
-            self._puck_vec_cb)
+        # self._puck_vec_sub = rospy.Subscriber(
+        #     '/puck_predicter/positionvelocity',
+        #     PositionVelocityStamped,
+        #     self._puck_vec_cb)
 
     def _puck_vec_cb(self, msg):
         triangle_defense_poly = np.array(
@@ -81,19 +81,22 @@ class ScaraController(object):
             else:
                 self._cmd_pos = triangle_defense_poly[1]
 
+    def _move_cart_implicit_cb(self, msg):
+        with self._lock:
+            self._cmd_pos = np.array([msg.x, msg.y])
+
     def _control_loop_cb(self, _):
-        print(self._cmd_pos)
-        if self._cmd_pos is None:
-            return
         dt = rospy.Time.now().to_sec() - self._last_time
         self._last_time += dt
+        if self._cmd_pos is None:
+            return
         command_msg = JointState()
         command_msg.name = ['Scara/0', 'Scara/1']
         time_constant = 0.1      # Convergence time constant
         lam = 1.0/time_constant   # Convergence rate
-        damping = 2.0
-        max_acc = 100.0
-        max_velocity = 10.0              # Velocity magnitude limit
+        damping = 0.7
+        max_acc = 10000000.0
+        max_velocity = 1.2              # Velocity magnitude limit
         with self._lock:
             self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self._cmd_pos)
             self._cur_acc = limit_array(self._cur_acc, max_acc)
