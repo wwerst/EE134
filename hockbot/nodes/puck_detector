@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+#
+#   puck_detector
+#
+#   Run a Cascade Object Detector in OpenCV.
+#
+#   Subscribers:    /image              Source image, to be remapped
+#   Publishers:     /detector/image     Destination image
+#                   /detector/???       Coordinates??
+#
+#   Services:       none
+#
+
+from threading import Lock, Semaphore
+
+# ROS Imports
+import rospy
+import sensor_msgs.msg
+from geometry_msgs.msg import (
+    Point,
+    PointStamped,
+)
+import cv2
+import cv_bridge
+import numpy as np
+
+from hockbot.computer_vision import process_image
+
+#
+#  Detector Node Class
+#
+class Detector:
+    def __init__(self):
+
+        # Set up the OpenCV Bridge.
+        self.bridge = cv_bridge.CvBridge()
+
+        # Pick the topic names.  The source image topic can be
+        # remapped in the command line.  The '~' places the output
+        # image topic will be under the node name.
+        input_topic = rospy.get_param("~image_topic")
+        point_output_topic = rospy.resolve_name("/detector/puck")
+
+        # Subscribe to the source topic.  Using a queue size of one
+        # means only the most recent message is stored for the next
+        # subscriber callback.
+        rospy.Subscriber(input_topic,
+                         sensor_msgs.msg.Image,
+                         self._recv_image,
+                         queue_size=1)
+        self._latest_img = None
+        self._new_img = False
+        self._lock = Lock()
+
+        # Publish to the output topic.
+        self.publisher = rospy.Publisher('~/puck_detector_image',
+                                         sensor_msgs.msg.Image,
+                                         queue_size=1)
+
+        self.point_publisher = rospy.Publisher(point_output_topic,
+                                                PointStamped,
+                                                queue_size=1)
+        num_threads = 1
+        self.img_process_timers = [rospy.Timer(rospy.Duration(0.01),
+            self.cb_timer) for i in range(num_threads)]
+
+    def _recv_image(self, image):
+        with self._lock:
+            self._latest_img = image
+            self._new_img = True
+
+    def cb_timer(self, _):
+        img = None
+        with self._lock:
+            if self._new_img:
+                img = self._latest_img
+                self._new_img = False
+        if img:
+            self.process(img)
+
+    def process(self, rosImage):
+        cvImage = self.bridge.imgmsg_to_cv2(rosImage)
+        # Run the detector.
+        image, center_points = process_image(cvImage)
+        if image is None:
+            image = cv2.cvtColor(cvImage, cv2.COLOR_GRAY2BGR)
+            return
+        if center_points is None:
+            center_points = []
+
+        for p in center_points:
+            point = Point(x=p[0], y=p[1], z=0)
+            self.point_publisher.publish(
+                PointStamped(point=point))
+        # Convert back into a ROS image and republish (for debugging).
+        self.publisher.publish(
+            self.bridge.cv2_to_imgmsg(image, 'rgb8'))
+
+
+#
+#  Main Code
+#
+if __name__ == "__main__":
+    # Prepare the node.  You can override the name using the
+    # 'rosrun .... __name:=something' convention.
+    rospy.init_node('puck_detector')
+
+    # Instantiate the Detector object.
+    detector = Detector()
+
+    # Continually process until shutdown.
+    rospy.loginfo("Continually processing latest pending images...")
+    rospy.spin()
+
+    # Report completion.
+    rospy.loginfo("Done!")

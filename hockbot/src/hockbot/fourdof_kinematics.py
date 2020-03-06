@@ -110,7 +110,7 @@ class FourDoFKinematics(object):
             elif (y < 0): # Cannot reach behind itself in play mode
                 print('Cant go behind robot')
                 return None
-            elif (z < -1 * self.CONST.Z_OFFSET): # Don't crash into the table
+            elif (z+0.02 < -1 * self.CONST.Z_OFFSET): # Don't crash into the table
                 print('Crash into table')
                 return None
 
