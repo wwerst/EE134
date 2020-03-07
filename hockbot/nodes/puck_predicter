@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 
+from threading import Lock
 import rospy
 import message_filters
 import cv2
@@ -33,9 +34,11 @@ class PuckPredicter(object):
             Image,
             queue_size=1)
 
+        self._cb_lock = Lock()
         self._time_ref = rospy.wait_for_message(
             '/detector/puck',
             PointStamped).header.stamp
+        self._last_time = 0.0
 
         self._bridge = cv_bridge.CvBridge()
 
@@ -60,38 +63,40 @@ class PuckPredicter(object):
         '''
         Puck position receive callback. Immediately publish position and velocity of puck
         '''
-        data_time = (point_stamped.header.stamp - self._time_ref).to_sec()
-        if data_time < self._time:
-            """Ignore data from the past."""
-            rospy.logwarn('Received out of order data')
-            return
-        self._time = (point_stamped.header.stamp - self._time_ref).to_sec()
-        self._dynamics.add_point(point_stamped)
-        posvel = PositionVelocityStamped()
-        posvel.header = point_stamped.header
-        posvel.position.x = self._dynamics.position[0]
-        posvel.position.y = self._dynamics.position[1]
-        posvel.velocity.x = self._dynamics.velocity[0]
-        posvel.velocity.y = self._dynamics.velocity[1]
-        self._pos_vel_publisher.publish(posvel)
+        with self._cb_lock:
+            data_time = (point_stamped.header.stamp - self._time_ref).to_sec()
+            if data_time < self._last_time:
+                """Ignore data from the past."""
+                rospy.logwarn('Received out of order data')
+                return
+            self._last_time = data_time
+            self._dynamics.add_point(point_stamped)
+            posvel = PositionVelocityStamped()
+            posvel.header = point_stamped.header
+            posvel.position.x = self._dynamics.position[0]
+            posvel.position.y = self._dynamics.position[1]
+            posvel.velocity.x = self._dynamics.velocity[0]
+            posvel.velocity.y = self._dynamics.velocity[1]
+            self._pos_vel_publisher.publish(posvel)
 
-        self._trajectory.points = [self._dynamics.predict_position(t) for t in np.linspace(self._time, self._time+1.0, num=10, endpoint=False)]
-        self._traj_publisher.publish(self._trajectory)
+            self._trajectory.points = [self._dynamics.predict_position(t) for t in np.linspace(self._last_time, self._last_time+1.0, num=10, endpoint=False)]
+            self._traj_publisher.publish(self._trajectory)
 
-        cvImage = self._bridge.imgmsg_to_cv2(img)
-        for point in self._trajectory.points:
-            x = int(np.round((point.x*PIXELS_PER_METER)))
-            y = int(np.round((point.y*PIXELS_PER_METER)))
-            cv2.circle(cvImage, (x, y), 1, (0, 255, 0), -1)
-        vx0 = int(np.round((self._dynamics.position[0]*PIXELS_PER_METER)))
-        vy0 = int(np.round((self._dynamics.position[1]*PIXELS_PER_METER)))
-        vx1 = vx0 + int(np.round((self._dynamics.velocity[0]*PIXELS_PER_METER * 0.1)))
-        vy1 = vy0 + int(np.round((self._dynamics.velocity[1]*PIXELS_PER_METER * 0.1)))
-        cv2.arrowedLine(cvImage, (vx0, vy0), (vx1, vy1), (255, 0, 0), 1)
-        #x = int(np.round((point_stamped.point.x/TABLE_WIDTH) * img.width))
-        #y = int(np.round((point_stamped.point.y/TABLE_LENGTH) * img.height))
-        #cv2.circle(cvImage, (x, y), 1, (0, 255, 0), -1)
-        self._traj_viz_publisher.publish(self._bridge.cv2_to_imgmsg(cvImage, 'rgb8'))
+            cvImage = self._bridge.imgmsg_to_cv2(img)
+            for point in self._trajectory.points:
+                x = int(np.round((point.x*PIXELS_PER_METER)))
+                y = int(np.round((point.y*PIXELS_PER_METER)))
+                cv2.circle(cvImage, (x, y), 1, (0, 255, 0), -1)
+            vx0 = int(np.round((self._dynamics.position[0]*PIXELS_PER_METER)))
+            vy0 = int(np.round((self._dynamics.position[1]*PIXELS_PER_METER)))
+            vx1 = vx0 + int(np.round((self._dynamics.velocity[0]*PIXELS_PER_METER * 0.1)))
+            vy1 = vy0 + int(np.round((self._dynamics.velocity[1]*PIXELS_PER_METER * 0.1)))
+            cv2.arrowedLine(cvImage, (vx0, vy0), (vx1, vy1), (255, 0, 0), 1)
+            #x = int(np.round((point_stamped.point.x/TABLE_WIDTH) * img.width))
+            #y = int(np.round((point_stamped.point.y/TABLE_LENGTH) * img.height))
+            #cv2.circle(cvImage, (x, y), 1, (0, 255, 0), -1)
+            self._traj_viz_publisher.publish(self._bridge.cv2_to_imgmsg(cvImage, 'rgb8'))
+
 
 def main():
     rospy.init_node('puck_predicter')
