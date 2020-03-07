@@ -63,7 +63,10 @@ class Detector:
                                                 queue_size=1)
 
     def _recv_image(self, image):
-        self._image_queue.put_nowait(image)
+        try:
+            self._image_queue.put_nowait(image)
+        except Queue.Full:
+            pass
 
     def spin(self):
         while not rospy.is_shutdown():
