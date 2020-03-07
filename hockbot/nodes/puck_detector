@@ -11,6 +11,7 @@
 #   Services:       none
 #
 
+import Queue
 from threading import Lock, Semaphore
 
 # ROS Imports
@@ -48,9 +49,7 @@ class Detector:
                          sensor_msgs.msg.Image,
                          self._recv_image,
                          queue_size=1)
-        self._latest_img = None
-        self._new_img = False
-        self._lock = Lock()
+        self._image_queue = Queue.Queue(maxsize=2)
 
         self._puck_detector = PuckDetector()
 
@@ -62,23 +61,17 @@ class Detector:
         self.point_publisher = rospy.Publisher(point_output_topic,
                                                 PointStamped,
                                                 queue_size=1)
-        num_threads = 1
-        self.img_process_timers = [rospy.Timer(rospy.Duration(0.01),
-            self.cb_timer) for i in range(num_threads)]
 
     def _recv_image(self, image):
-        with self._lock:
-            self._latest_img = image
-            self._new_img = True
+        self._image_queue.put_nowait(image)
 
-    def cb_timer(self, _):
-        img = None
-        with self._lock:
-            if self._new_img:
-                img = self._latest_img
-                self._new_img = False
-        if img:
-            self.process(img)
+    def spin(self):
+        while not rospy.is_shutdown():
+            try:
+                img = self._image_queue.get(timeout=1.0)
+                self.process(img)
+            except Queue.Empty:
+                pass
 
     def process(self, rosImage):
         cvImage = self.bridge.imgmsg_to_cv2(rosImage)
@@ -114,7 +107,7 @@ if __name__ == "__main__":
 
     # Continually process until shutdown.
     rospy.loginfo("Continually processing latest pending images...")
-    rospy.spin()
+    detector.spin()
 
     # Report completion.
     rospy.loginfo("Done!")
