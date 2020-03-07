@@ -12,8 +12,8 @@ from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import Vector3Stamped
 from sensor_msgs.msg import Image
 
-TABLE_WIDTH = 1.697
-TABLE_LENGTH = 1.255
+PIXELS_PER_METER = 200.0
+
 
 class PuckPredicter(object):
 
@@ -60,6 +60,11 @@ class PuckPredicter(object):
         '''
         Puck position receive callback. Immediately publish position and velocity of puck
         '''
+        data_time = (point_stamped.header.stamp - self._time_ref).to_sec()
+        if data_time < self._time:
+            """Ignore data from the past."""
+            rospy.logwarn('Received out of order data')
+            return
         self._time = (point_stamped.header.stamp - self._time_ref).to_sec()
         self._dynamics.add_point(point_stamped)
         posvel = PositionVelocityStamped()
@@ -75,13 +80,13 @@ class PuckPredicter(object):
 
         cvImage = self._bridge.imgmsg_to_cv2(img)
         for point in self._trajectory.points:
-            x = int(np.round((point.x/TABLE_WIDTH) * img.width))
-            y = int(np.round((point.y/TABLE_LENGTH) * img.height))
+            x = int(np.round((point.x*PIXELS_PER_METER)))
+            y = int(np.round((point.y*PIXELS_PER_METER)))
             cv2.circle(cvImage, (x, y), 1, (0, 255, 0), -1)
-        vx0 = int(np.round((self._dynamics.position[0]/TABLE_WIDTH) * img.width))
-        vy0 = int(np.round((self._dynamics.position[1]/TABLE_LENGTH) * img.height))
-        vx1 = vx0 + int(np.round((self._dynamics.velocity[0]/TABLE_WIDTH) * img.width * 0.1))
-        vy1 = vy0 + int(np.round((self._dynamics.velocity[1]/TABLE_LENGTH) * img.height * 0.1))
+        vx0 = int(np.round((self._dynamics.position[0]*PIXELS_PER_METER)))
+        vy0 = int(np.round((self._dynamics.position[1]*PIXELS_PER_METER)))
+        vx1 = vx0 + int(np.round((self._dynamics.velocity[0]*PIXELS_PER_METER * 0.1)))
+        vy1 = vy0 + int(np.round((self._dynamics.velocity[1]*PIXELS_PER_METER * 0.1)))
         cv2.arrowedLine(cvImage, (vx0, vy0), (vx1, vy1), (255, 0, 0), 1)
         #x = int(np.round((point_stamped.point.x/TABLE_WIDTH) * img.width))
         #y = int(np.round((point_stamped.point.y/TABLE_LENGTH) * img.height))

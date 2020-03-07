@@ -3,9 +3,13 @@
 #   puck_dynamics.py
 
 import numpy as np
+from numpy.polynomial.polynomial import Polynomial
+import shapely.geometry as sp_geom
+
 import rospy
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
+
 
 class PuckDynamics(object):
     '''
@@ -66,32 +70,37 @@ class PuckDynamics(object):
 
         # Recompute the regression
         if (self.num_valid_points >= self.NUM_POINTS):
-            x_coeffs = np.polyfit(self.t_arr, self.x_arr, 2, full=True)
-            y_coeffs = np.polyfit(self.t_arr, self.y_arr, 2, full=True)
+            x_coeffs = Polynomial.fit(self.t_arr, self.x_arr, 2, full=True)
+            y_coeffs = Polynomial.fit(self.t_arr, self.y_arr, 2, full=True)
             if x_coeffs[1][0] <= 0.01:
-                self.x_coeffs = x_coeffs[0]
+                self.x_coeffs = x_coeffs[0].convert().coef
             if y_coeffs[1][0] <= 0.01:
-                self.y_coeffs = y_coeffs[0]
+                self.y_coeffs = y_coeffs[0].convert().coef
 
         # Fill in present position and velocity
         self.position = np.array([x, y])
-        if self.num_valid_points >= 3:
-            vx = 0.5 * (
+        if self.num_valid_points >= self.NUM_POINTS:
+            # vx = np.polyval(np.array([2*self.x_coeffs[0], self.x_coeffs[1]]), self.t_arr[-1])
+            # vy = np.polyval(np.array([2*self.y_coeffs[0], self.y_coeffs[1]]), self.t_arr[-1])
+            time_constant = 0.1
+            self.velocity[0] *= (1-time_constant)
+            self.velocity[0] += time_constant * 0.5 * (
                     ((self.x_arr[self.NUM_POINTS-1] - self.x_arr[self.NUM_POINTS-2]) / 
                     (self.t_arr[self.NUM_POINTS-1] - self.t_arr[self.NUM_POINTS-2])) + 
                     ((self.x_arr[self.NUM_POINTS-2] - self.x_arr[self.NUM_POINTS-3]) / 
                     (self.t_arr[self.NUM_POINTS-2] - self.t_arr[self.NUM_POINTS-3])) 
                     )
-            vy = 0.5 * (
+            self.velocity[1] *= (1-time_constant)
+            self.velocity[1] += time_constant * 0.5 * (
                     ((self.y_arr[self.NUM_POINTS-1] - self.y_arr[self.NUM_POINTS-2]) / 
                     (self.t_arr[self.NUM_POINTS-1] - self.t_arr[self.NUM_POINTS-2])) + 
                     ((self.y_arr[self.NUM_POINTS-2] - self.y_arr[self.NUM_POINTS-3]) / 
                     (self.t_arr[self.NUM_POINTS-2] - self.t_arr[self.NUM_POINTS-3]))
                     )
         else:
-            vx = 0.0
-            vy = 0.0
-        self.velocity = np.array([vx, vy])
+            self.velocity = np.zeros(2)
+        self.x_coeffs = np.array([self.velocity[0], self.position[0] - self.velocity[0]*self.t_arr[-1]])
+        self.y_coeffs = np.array([self.velocity[1], self.position[1] - self.velocity[1]*self.t_arr[-1]])
 
     def predict_position(self, t):
         '''
@@ -135,3 +144,22 @@ class PuckDynamics(object):
             retPoint.x = self.position[0]
             retPoint.y = self.position[1]
         return retPoint
+
+
+def intersect_line_segment_polygon(line_segment, polygon):
+    """Find the nearest intersection of the given vector with given polygon."""
+    sp_line_seg = sp_geom.LineString(line_segment)
+    sp_polygon = sp_geom.LineString(polygon)
+    start_point = sp_geom.Point(*line_segment[0])
+    intersect_points = sp_polygon.intersection(sp_line_seg)
+    min_point = None
+    if isinstance(intersect_points, sp_geom.LineString):
+        return None
+    if isinstance(intersect_points, sp_geom.Point):
+        return np.array(intersect_points)
+    for p in intersect_points:
+        if min_point is None or p.distance(start_point) < min_point.distance(start_point):
+            min_point = p
+    if min_point is None:
+        return None
+    return np.array(min_point)

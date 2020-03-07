@@ -1,0 +1,11 @@
+<launch>
+  <group ns="ximea_camera">
+    <node name="ximea_camera" pkg="hockbot" type="ximea_camera">
+      <param name="max_framerate" value="500"/>
+    </node>
+    <node name="image_proc" pkg="image_proc" type="image_proc"/>
+    <node name="puck_detector" pkg="hockbot" type="puck_detector">
+      <param name="image_topic" value="/ximea_camera/image_rect"/>
+    </node>
+  </group>
+</launch>

@@ -1,8 +1,8 @@
 import numpy as np
 
 # Constants
-SCARA_X_OFFSET = 0.0 # meters, indexed from bottom left corner
-SCARA_Y_OFFSET = 0.0 # meters, indexed from bottom left corner
+SCARA_X_OFFSET = 1.035 # meters, indexed from bottom left corner
+SCARA_Y_OFFSET = 0.097 # meters, indexed from bottom left corner
 
 r1 = 0.5 # meters, length of the first arm
 r2 = 0.5 # meters, length of the second arm
@@ -38,10 +38,10 @@ def ikin(x, y):
     y = y - SCARA_Y_OFFSET
 
     # Check if out of reach
-    if (np.sqrt((x - SCARA_X_OFFSET)**2 + (y - SCARA_Y_OFFSET)**2) > r1 + r2):
+    if (np.sqrt((x)**2 + (y)**2) > r1 + r2):
         return None
     # Check if out of bounds
-    if (y < SCARA_Y_OFFSET):
+    if (y < 0):
         return None
 
     # angle from base to desired point

@@ -15,7 +15,7 @@
   <joint name="connect-world-motor0base" type="fixed">
     <parent link="world"/>
     <child  link="motor0base"/>
-    <origin xyz="0.25 0 0" rpy="0 0 0"/>
+    <origin xyz="1.035 0.097 0" rpy="0 0 0"/>
   </joint>
   <link name="motor0base"/>
 
