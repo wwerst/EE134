@@ -19,7 +19,7 @@ class PuckDynamics(object):
         '''
         Initialize the puck dynamics object with constants for the environment
         '''
-        self.NUM_POINTS = 10 # Number of points to fit
+        self.NUM_POINTS = 3 # Number of points to fit
         self.TABLE_LEFT = 0.0 # x Position of table left edge, meters
         self.TABLE_RIGHT = 1000.0 # x Position of the table right edge, meters
         self.TABLE_BOTTOM = 0.0 # y Position of table bottom edge, meters
@@ -82,7 +82,7 @@ class PuckDynamics(object):
         if self.num_valid_points >= self.NUM_POINTS:
             # vx = np.polyval(np.array([2*self.x_coeffs[0], self.x_coeffs[1]]), self.t_arr[-1])
             # vy = np.polyval(np.array([2*self.y_coeffs[0], self.y_coeffs[1]]), self.t_arr[-1])
-            time_constant = 0.1
+            time_constant = 0.3
             self.velocity[0] *= (1-time_constant)
             self.velocity[0] += time_constant * 0.5 * (
                     ((self.x_arr[self.NUM_POINTS-1] - self.x_arr[self.NUM_POINTS-2]) / 

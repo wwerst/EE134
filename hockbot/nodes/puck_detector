@@ -40,6 +40,8 @@ class Detector:
         # remapped in the command line.  The '~' places the output
         # image topic will be under the node name.
         input_topic = rospy.get_param("~image_topic")
+        self._modulo_count = rospy.get_param("~modulo_count")
+        self._modulo_num = rospy.get_param("~modulo_num")
         point_output_topic = rospy.resolve_name("/detector/puck")
 
         # Subscribe to the source topic.  Using a queue size of one
@@ -63,6 +65,9 @@ class Detector:
                                                 queue_size=1)
 
     def _recv_image(self, image):
+        if image.header.seq % self._modulo_count != self._modulo_num:
+            # This message is not intended for this detector node
+            return
         try:
             self._image_queue.put_nowait(image)
         except Queue.Full:

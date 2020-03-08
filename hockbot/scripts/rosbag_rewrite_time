@@ -1,0 +1,44 @@
+#!/usr/bin/env python2
+import argparse
+
+import rospy
+import rosbag
+from std_msgs.msg import Header
+
+
+def play_bag_file(bag_file, loop_count=-1, rate=1.0):
+    with rosbag.Bag(bag_file) as bag:
+        pubs = dict()
+        while not rospy.is_shutdown() and loop_count != 0:
+            send_start_time = None
+            bag_start_time = None
+            loop_count -= 1
+            for topic, msg, t in bag.read_messages():
+                cur_time = rospy.Time.now()
+                if bag_start_time is None:
+                    bag_start_time = t
+                    send_start_time = cur_time
+                bag_time_delta = t - bag_start_time
+                message_time = send_start_time + bag_time_delta/rate
+                if getattr(msg, 'header'):
+                    msg.header.stamp = message_time
+                if topic not in pubs:
+                    pubs[topic] = rospy.Publisher(topic, type(msg), queue_size=1)
+                sleep_time = message_time - cur_time
+                # print(sleep_time.to_sec())
+                rospy.sleep(sleep_time)
+                pubs[topic].publish(msg)
+                if rospy.is_shutdown():
+                    break
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('bag_file', type=argparse.FileType('r'))
+    args = parser.parse_args()
+    rospy.init_node('rosbag_time_rewriter')
+    play_bag_file(args.bag_file)
+
+
+if __name__ == '__main__':
+    main()
