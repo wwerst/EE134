@@ -36,10 +36,10 @@ class ScaraController(object):
             JointState,
             queue_size=1)
 
-        cur_jnt_state = rospy.wait_for_message(
-            '/hebiros/scara/feedback/joint_state',
-            JointState)
-        self._cur_jnt_angles = remap_joint_state(cur_jnt_state, ['Scara/0', 'Scara/1']).position
+        # cur_jnt_state = rospy.wait_for_message(
+        #     '/hebiros/scara/feedback/joint_state',
+        #     JointState)
+        self._cur_jnt_angles = np.array([0.0, 0.0]) #remap_joint_state(cur_jnt_state, ['Scara/0', 'Scara/1']).position
         print(self._cur_jnt_angles)
         print(fkin(*self._cur_jnt_angles))
         # self._joint_srv = rospy.Service(
