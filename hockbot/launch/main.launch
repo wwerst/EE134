@@ -10,6 +10,7 @@
     <param name="image_height" value="720"/>
   </node>
   <include if="$(arg use_ximea_camera)" file="$(find hockbot)/launch/ximea.launch" />
+  <include file="$(find hockbot)/launch/puck_tracker.launch"/>
   <node name="gripper_controller" pkg="hockbot" type="gripper_controller"/>
   <node name="hebiros_node" pkg="hebiros" type="hebiros_node" respawn="false" output="screen"/>
   <group if="$(arg use_picker)">

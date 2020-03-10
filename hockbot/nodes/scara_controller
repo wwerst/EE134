@@ -36,10 +36,10 @@ class ScaraController(object):
             JointState,
             queue_size=1)
 
-        # cur_jnt_state = rospy.wait_for_message(
-        #     '/hebiros/scara/feedback/joint_state',
-        #     JointState)
-        self._cur_jnt_angles = np.array([0.0, 0.0]) #remap_joint_state(cur_jnt_state, ['Scara/0', 'Scara/1']).position
+        cur_jnt_state = rospy.wait_for_message(
+            '/hebiros/scara/feedback/joint_state',
+            JointState)
+        self._cur_jnt_angles = remap_joint_state(cur_jnt_state, ['Scara/0', 'Scara/1']).position
         print(self._cur_jnt_angles)
         print(fkin(*self._cur_jnt_angles))
         # self._joint_srv = rospy.Service(
@@ -107,6 +107,9 @@ class ScaraController(object):
     def _puck_vec_cb(self, msg):
         puck_pos = np.array([msg.position.x, msg.position.y])
         puck_vel = np.array([msg.velocity.x, msg.velocity.y])
+        if np.dot(puck_vel, puck_vel).sum() ** 0.5 < 0.5:
+            # HACK(WHW): Puck is moving slow, don't react
+            return
         nearest_intersect = intersect_line_segment_polygon(
             np.array([puck_pos, puck_pos+puck_vel*1.0]),
             self.triangle_defense_poly)
@@ -135,7 +138,7 @@ class ScaraController(object):
         lam = 1.0/time_constant   # Convergence rate
         damping = 0.7
         max_acc = 10000000.0
-        Kp = 160.0
+        Kp = 40.0
         max_velocity = 1.5              # Velocity magnitude limit
         cmd_pos = self.cmd_pos
         # self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self._cmd_pos)
