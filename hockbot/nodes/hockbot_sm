@@ -1,0 +1,219 @@
+#!/usr/bin/env python
+import numpy as np
+from threading import Lock
+import rospy
+
+from hockbot.states import HockbotStates, SCARAStates, PickerStates
+from hockbot.srv import (
+    SCARAChangeState,
+    PickerChangeState,
+)
+
+
+class TransitionConditions(object):
+    '''
+    Single object for state machine transition conditions
+    '''
+    def __init__(self):
+        '''
+        Initialize all transition conditions
+        '''
+        self.PuckVisible = False
+        self.ScoreDanger = False
+        self.PuckInPickerReach = False
+        self.PuckInSCARAReach = False
+        self.ScoredOn = False
+        self.Fault = False
+
+
+class HockbotSM(object):
+
+    def __init__(self):
+        self._state = HockbotStates.HOCKBOT_STATE_IDLE
+        self.SCARA_ChangeState = rospy.ServiceProxy('/hockbot_sm/SCARAChangeState', SCARAChangeState)
+        self.Picker_ChangeState = rospy.ServiceProxy('/hockbot_sm/PickerChangeState', PickerChangeState)
+
+        # Test callbacks
+        # self._test_picker_srv = rospy.Service(
+        #     '/hockbot_sm/PickerChangeState',
+        #     PickerChangeState,
+        #     self._srv_picker_test_cb
+        #     )
+
+        # self._test_scara_srv = rospy.Service(
+        #     '/hockbot_sm/SCARAChangeState',
+        #     SCARAChangeState,
+        #     self._srv_scara_test_cb
+        #     )
+
+        # Blocking make sure robots are ready before starting loop
+        self.SCARA_ChangeState(SCARAStates.SCARA_STATE_IDLE.value)
+        self.Picker_ChangeState(PickerStates.PICKER_STATE_IDLE.value)
+
+        # Object to hold transition conditions
+        self._transition_conditions = TransitionConditions()
+
+        # Locks for transition conditions and state variable
+        self._transitions_lock = Lock()
+        self._state_lock = Lock()
+
+        # Timer callback for state transitions
+        self._sm_dt = 0.01
+        self._sm_loop = rospy.Timer(
+            rospy.Duration(self._sm_dt),
+            self._sm_loop_cb)
+
+        # Timer callback for updating transition conditions
+        self._tc_dt = 0.01
+        self._tc_loop = rospy.Timer(
+            rospy.Duration(self._sm_dt),
+            self._tc_loop_cb)
+
+    # def _srv_scara_test_cb(self, req):
+    #     print(req)
+    #     return True
+
+    # def _srv_picker_test_cb(self, req):
+    #     print(req)
+    #     return True
+
+    def _sm_loop_cb(self, _):
+        with self._transitions_lock:
+            PuckVisible = self._transition_conditions.PuckVisible
+            ScoreDanger = self._transition_conditions.ScoreDanger
+            PuckInPickerReach = self._transition_conditions.PuckInPickerReach
+            PuckInSCARAReach = self._transition_conditions.PuckInSCARAReach
+            ScoredOn = self._transition_conditions.ScoredOn
+            Fault = self._transition_conditions.Fault
+        with self._state_lock:
+            cur_state = self._state
+
+        # print(cur_state.name)
+
+        # Catch-all condition transitions
+        if Fault:
+            nx_state = HockbotStates.HOCKBOT_STATE_IDLE
+        elif ScoredOn:
+            nx_state = HockbotStates.HOCKBOT_STATE_GRABFROMGOAL
+
+        # State-specific conditional transitions
+        else:
+            # Default next state
+            nx_state = HockbotStates.HOCKBOT_STATE_IDLE
+
+            if cur_state == HockbotStates.HOCKBOT_STATE_IDLE:
+                # Perform repeated idle state tasks
+
+                if PuckVisible and not Fault:
+                    nx_state = HockbotStates.HOCKBOT_STATE_DEFENSE
+                else:
+                    nx_state = cur_state
+
+            elif cur_state == HockbotStates.HOCKBOT_STATE_DEFENSE:
+                # Perform repeated defense state tasks
+
+                if not PuckVisible:
+                    nx_state = HockbotStates.HOCKBOT_STATE_SCANNING
+                elif PuckVisible and not ScoreDanger and PuckInSCARAReach:
+                    nx_state = HockbotStates.HOCKBOT_STATE_SHOOTING
+                else:
+                    nx_state = cur_state
+
+            elif cur_state == HockbotStates.HOCKBOT_STATE_SCANNING:
+                # Perform repeated scanning state tasks
+
+                if PuckVisible and not PuckInSCARAReach and not PuckInPickerReach:
+                    nx_state = HockbotStates.HOCKBOT_STATE_DEFENSE
+                elif PuckVisible and not PuckInSCARAReach and PuckInPickerReach:
+                    nx_state = HockbotStates.HOCKBOT_STATE_GRABFROMTABLE
+                elif PuckVisible and PuckInSCARAReach:
+                    nx_state = HockbotStates.HOCKBOT_STATE_SHOOTING
+                else:
+                    nx_state = cur_state
+
+            elif cur_state == HockbotStates.HOCKBOT_STATE_SHOOTING:
+                # Perform repeated shooting state tasks
+
+                nx_state = HockbotStates.HOCKBOT_STATE_DEFENSE
+
+            elif cur_state == HockbotStates.HOCKBOT_STATE_GRABFROMTABLE:
+                # Perform repeated grab from table tasks
+
+                nx_state = HockbotStates.HOCKBOT_STATE_PUCKSETUP
+
+            elif cur_state == HockbotStates.HOCKBOT_STATE_GRABFROMGOAL:
+                # Perform repeated grab from goal tasks
+
+                nx_state = HockbotStates.HOCKBOT_STATE_PUCKSETUP
+
+            elif cur_state == HockbotStates.HOCKBOT_STATE_PUCKSETUP:
+                # Perform repeated puck setup tasks
+
+                nx_state = HockbotStates.HOCKBOT_STATE_SHOOTING
+
+            else:  # Shouldn't get here
+                print('Hockbot SM in illegal state')
+
+        # Transition-only actions
+        if nx_state != cur_state:
+
+            if nx_state == HockbotStates.HOCKBOT_STATE_IDLE:
+                self.SCARA_ChangeState(SCARAStates.SCARA_STATE_IDLE.value)
+                self.Picker_ChangeState(PickerStates.PICKER_STATE_IDLE.value)
+
+            elif nx_state == HockbotStates.HOCKBOT_STATE_DEFENSE:
+                self.Picker_ChangeState(PickerStates.PICKER_STATE_IDLE.value)
+                self.SCARA_ChangeState(SCARAStates.SCARA_STATE_TRIANGLEDEFENSE.value)
+
+            elif nx_state == HockbotStates.HOCKBOT_STATE_SCANNING:
+                self.Picker_ChangeState(PickerStates.PICKER_STATE_IDLE.value)
+                self.SCARA_ChangeState(SCARAStates.SCARA_STATE_SCANNING.value)
+
+            elif nx_state == HockbotStates.HOCKBOT_STATE_SHOOTING:
+                self.Picker_ChangeState(PickerStates.PICKER_STATE_IDLE.value)
+                self.SCARA_ChangeState(SCARAStates.SCARA_STATE_SHOOTING.value)
+
+            elif nx_state == HockbotStates.HOCKBOT_STATE_GRABFROMTABLE:
+                self.SCARA_ChangeState(SCARAStates.SCARA_STATE_IDLE.value)
+                self.Picker_ChangeState(PickerStates.PICKER_STATE_GRABFROMTABLE.value)
+
+            elif nx_state == HockbotStates.HOCKBOT_STATE_GRABFROMGOAL:
+                self.SCARA_ChangeState(SCARAStates.SCARA_STATE_IDLE.value)
+                self.Picker_ChangeState(PickerStates.PICKER_STATE_GRABFROMGOAL.value)
+
+            elif nx_state == HockbotStates.HOCKBOT_STATE_PUCKSETUP:
+                self.SCARA_ChangeState(SCARAStates.SCARA_STATE_IDLE.value)
+                self.Picker_ChangeState(PickerStates.PICKER_STATE_PUCK_SETUP.value)
+
+            else:  # Shouldn't get here
+                print('Hockbot SM trying to enter illegal state')
+
+        with self._state_lock:
+            self._state = nx_state
+
+    def _tc_loop_cb(self, _):
+        # TODO properly acquire these conditions
+        PuckVisible = True
+        ScoreDanger = True
+        PuckInPickerReach = False
+        PuckInSCARAReach = True
+        ScoredOn = False
+        Fault = False
+
+        with self._transitions_lock:
+            self._transition_conditions.PuckVisible = PuckVisible
+            self._transition_conditions.ScoreDanger = ScoreDanger
+            self._transition_conditions.PuckInPickerReach = PuckInPickerReach
+            self._transition_conditions.PuckInSCARAReach = PuckInSCARAReach
+            self._transition_conditions.ScoredOn = ScoredOn
+            self._transition_conditions.Fault = Fault
+
+
+def main():
+    rospy.init_node('hockbot_sm')
+    StateMachine = HockbotSM()
+    rospy.spin()
+
+
+if __name__ == '__main__':
+    main()

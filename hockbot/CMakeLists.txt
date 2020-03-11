@@ -62,6 +62,8 @@ add_service_files(
   MoveCart.srv
   MoveJoint.srv
   MovePickerCart.srv
+  PickerChangeState.srv
+  SCARAChangeState.srv
 )
 
 ## Generate actions in the 'action' folder
