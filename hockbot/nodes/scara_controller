@@ -70,10 +70,10 @@ class ScaraController(object):
         self._cur_acc = np.array([0., 0.])
         self._cur_vel = np.array([0., 0.])
         self._cmd_pos = None
-        # self._puck_vec_sub = rospy.Subscriber(
-        #     '/puck_predicter/positionvelocity',
-        #     PositionVelocityStamped,
-        #     self._puck_vec_cb)
+        self._puck_vec_sub = rospy.Subscriber(
+            '/puck_predicter/positionvelocity',
+            PositionVelocityStamped,
+            self._puck_vec_cb)
         self._bridge = cv_bridge.CvBridge()
         self._puck_im_sub = rospy.Subscriber(
             '/puck_predicter/visualization/image',
@@ -91,8 +91,8 @@ class ScaraController(object):
     @property
     def cmd_pos(self):
         with self._lock:
-            # if rospy.Time.now().to_sec() - self._last_defense_move > 1.0:
-            #     return self.triangle_defense_poly[1]
+            if rospy.Time.now().to_sec() - self._last_defense_move > 1.0:
+                return self.triangle_defense_poly[1]
             return self._cmd_pos
 
     def _image_render_cb(self, img):
@@ -142,15 +142,14 @@ class ScaraController(object):
             return
         command_msg = JointState()
         command_msg.name = ['Scara/0', 'Scara/1']
-        time_constant = 0.08      # Convergence time constant
-        lam = 1.0/time_constant   # Convergence rate
-        damping = 1.8
+        damping = 0.7
         max_acc = 4.0
+        Kp = 20.0
         max_velocity = 2.0              # Velocity magnitude limit
         cmd_pos = self.cmd_pos
-        self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self._cmd_pos)
-        self._cur_acc = limit_array(self._cur_acc, max_acc)
-        self._cur_vel += dt * self._cur_acc
+        # self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self.cmd_pos)
+        # self._cur_acc = limit_array(self._cur_acc, max_acc)
+        self._cur_vel = -(self._cur_pos - cmd_pos) * Kp # dt * self._cur_acc
         # Apply velocity limits
         self._cur_vel = limit_array(self._cur_vel, max_velocity)
 
