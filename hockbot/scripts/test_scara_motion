@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+
+import rospy
+from sensor_msgs.msg import JointState
+
+from hockbot.srv import (
+    MoveCart,
+    MoveCartRequest
+)
+
+
+def main():
+    rospy.init_node('test_scara_motion')
+    move_cart = rospy.ServiceProxy(
+        '/move_cart',
+        MoveCart)
+    position_loop = [
+        MoveCartRequest(x=0.8, y=0.4),
+        MoveCartRequest(x=0.5, y=0.4),
+        MoveCartRequest(x=0.5, y=0.8),
+        MoveCartRequest(x=0.5, y=0.4),
+        MoveCartRequest(x=0.8, y=0.4)
+    ]
+    for cmd in position_loop:
+        move_cart(cmd)
+        rospy.sleep(1.0)
+        if rospy.is_shutdown():
+            break
+
+
+if __name__ == '__main__':
+    main()

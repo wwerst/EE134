@@ -2,6 +2,7 @@
 import numpy as np
 from threading import Lock
 
+from copy import deepcopy
 import cv2
 import cv_bridge
 import rospy
@@ -17,6 +18,7 @@ from hebiros.msg import (
     TrajectoryGoal,
     WaypointMsg,
 )
+from hockbot.inverse_dynamics import calculate_dynamics
 from hockbot.msg import PositionVelocityStamped
 from hockbot.scara_kinematics import (
     ikin,
@@ -39,9 +41,13 @@ class ScaraController(object):
         cur_jnt_state = rospy.wait_for_message(
             '/hebiros/scara/feedback/joint_state',
             JointState)
-        self._cur_jnt_angles = remap_joint_state(cur_jnt_state, ['Scara/0', 'Scara/1']).position
-        print(self._cur_jnt_angles)
-        print(fkin(*self._cur_jnt_angles))
+        cur_jnt_state = remap_joint_state(cur_jnt_state, ['Scara/0', 'Scara/1'])
+        self._cur_jnt_pos = cur_jnt_state.position
+        self._last_jnt_pos = cur_jnt_state.position
+        self._cur_jnt_vel = cur_jnt_state.velocity
+        self._last_jnt_vel = cur_jnt_state.velocity
+        print(self._cur_jnt_pos)
+        print(fkin(*self._cur_jnt_pos))
         # self._joint_srv = rospy.Service(
         #     '~/move_joint',
         #     MoveJoint,
@@ -60,14 +66,14 @@ class ScaraController(object):
         self._dt = 0.01
         self._last_defense_move = rospy.Time.now().to_sec()
         self._last_time = rospy.Time.now().to_sec()
-        self._cur_pos = fkin(*self._cur_jnt_angles)
+        self._cur_pos = fkin(*self._cur_jnt_pos)
         self._cur_acc = np.array([0., 0.])
         self._cur_vel = np.array([0., 0.])
         self._cmd_pos = None
-        self._puck_vec_sub = rospy.Subscriber(
-            '/puck_predicter/positionvelocity',
-            PositionVelocityStamped,
-            self._puck_vec_cb)
+        # self._puck_vec_sub = rospy.Subscriber(
+        #     '/puck_predicter/positionvelocity',
+        #     PositionVelocityStamped,
+        #     self._puck_vec_cb)
         self._bridge = cv_bridge.CvBridge()
         self._puck_im_sub = rospy.Subscriber(
             '/puck_predicter/visualization/image',
@@ -85,8 +91,8 @@ class ScaraController(object):
     @property
     def cmd_pos(self):
         with self._lock:
-            if rospy.Time.now().to_sec() - self._last_defense_move > 1.0:
-                return self.triangle_defense_poly[1]
+            # if rospy.Time.now().to_sec() - self._last_defense_move > 1.0:
+            #     return self.triangle_defense_poly[1]
             return self._cmd_pos
 
     def _image_render_cb(self, img):
@@ -125,7 +131,9 @@ class ScaraController(object):
 
     def _move_cart_implicit_cb(self, msg):
         with self._lock:
+            print(msg)
             self._cmd_pos = np.array([msg.x, msg.y])
+            return True
 
     def _control_loop_cb(self, _):
         dt = rospy.Time.now().to_sec() - self._last_time
@@ -134,25 +142,32 @@ class ScaraController(object):
             return
         command_msg = JointState()
         command_msg.name = ['Scara/0', 'Scara/1']
-        time_constant = 0.1      # Convergence time constant
+        time_constant = 0.08      # Convergence time constant
         lam = 1.0/time_constant   # Convergence rate
-        damping = 0.7
-        max_acc = 10000000.0
-        Kp = 40.0
-        max_velocity = 1.5              # Velocity magnitude limit
+        damping = 1.8
+        max_acc = 4.0
+        max_velocity = 2.0              # Velocity magnitude limit
         cmd_pos = self.cmd_pos
-        # self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self._cmd_pos)
-        # self._cur_acc = limit_array(self._cur_acc, max_acc)
-        self._cur_vel = -(self._cur_pos - cmd_pos) * Kp # dt * self._cur_acc
+        self._cur_acc = - 1.4 * damping * lam * self._cur_vel - lam * lam * (self._cur_pos - self._cmd_pos)
+        self._cur_acc = limit_array(self._cur_acc, max_acc)
+        self._cur_vel += dt * self._cur_acc
         # Apply velocity limits
         self._cur_vel = limit_array(self._cur_vel, max_velocity)
 
         self._cur_pos += dt * self._cur_vel
-        self._cur_jnt_angles = self._calculate_ikin_nearest(self._cur_pos, self._cur_jnt_angles)
-        self._cur_pos = fkin(*self._cur_jnt_angles)
-        command_msg.position = self._cur_jnt_angles
-        command_msg.velocity = np.array([0.0]*len(self._cur_pos)) # self._cur_vel
-        command_msg.effort = np.array([0.0]*len(self._cur_pos))
+        self._last_jnt_vel = deepcopy(self._cur_jnt_vel)
+        self._last_jnt_pos = deepcopy(self._cur_jnt_pos)
+        self._cur_jnt_pos = self._calculate_ikin_nearest(self._cur_pos, self._cur_jnt_pos)
+        self._cur_jnt_vel = (self._cur_jnt_pos - self._last_jnt_pos) / dt
+        cur_jnt_acc = (self._cur_jnt_vel - self._last_jnt_vel) / dt
+        self._cur_pos = fkin(*self._cur_jnt_pos)
+        command_msg.position = self._cur_jnt_pos
+        command_msg.velocity = self._cur_jnt_vel
+        command_msg.effort = np.zeros(2)
+        # calculate_dynamics(
+        #     command_msg.position,
+        #     command_msg.velocity,
+        #     cur_jnt_acc)
         command_msg.header.stamp = rospy.Time.now()
         self._hebi_commander.publish(command_msg)
 
@@ -187,7 +202,7 @@ class ScaraController(object):
             rate.sleep()
 
     def plan_cartesian(self, goal_pos, goal_time=5.0, dt=0.01):
-        cur_angles = self._cur_jnt_angles
+        cur_angles = self._cur_jnt_pos
         start_pos = fkin(*cur_angles)
         def interp_pos(fraction):
             print('start_pos: {}'.format(start_pos))
